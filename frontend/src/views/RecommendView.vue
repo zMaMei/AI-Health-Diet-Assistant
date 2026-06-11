@@ -32,6 +32,9 @@
         </div>
 
         <div class="rec-actions">
+          <button class="btn btn-sm btn-outline" @click="viewDetail(rec)">
+            📋 查看详情
+          </button>
           <button class="btn btn-sm btn-outline" @click="dislike(rec.id)">
             👎 不喜欢
           </button>
@@ -51,12 +54,46 @@
       已经到底了，没有更多推荐~
     </div>
 
-    <!-- Alert check -->
-    <div class="card alert-card" v-if="alerts.length" style="border-left:3px solid #f44336">
-      <h3 class="card-title" style="color:#f44336">🔔 饮食预警</h3>
-      <div v-for="(alert, i) in alerts" :key="i" style="margin:4px 0">
-        <p style="font-size:13px">{{ alert.message }}</p>
-        <p style="font-size:12px;color:#999">{{ alert.suggestion }}</p>
+    <!-- Recipe Detail Modal -->
+    <div class="modal-overlay" v-if="showDetailModal" @click.self="showDetailModal=false">
+      <div class="modal-content recipe-detail">
+        <h3>🍳 {{ detailRecipe?.recipeName }}</h3>
+        <div class="detail-tags" v-if="detailRecipe?.tags">
+          <span class="tag tag-green" v-for="tag in parseTags(detailRecipe.tags)" :key="tag">{{ tag }}</span>
+        </div>
+        <div class="detail-nutrition">
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ Number(detailRecipe?.calorie).toFixed(0) }}</span>
+            <span class="nut-label">热量(kcal)</span>
+          </div>
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ Number(detailRecipe?.protein).toFixed(1) }}</span>
+            <span class="nut-label">蛋白质(g)</span>
+          </div>
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ Number(detailRecipe?.fat).toFixed(1) }}</span>
+            <span class="nut-label">脂肪(g)</span>
+          </div>
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ Number(detailRecipe?.carbohydrate).toFixed(1) }}</span>
+            <span class="nut-label">碳水(g)</span>
+          </div>
+        </div>
+        <div class="detail-section">
+          <strong>🥬 食材</strong>
+          <p>{{ detailRecipe?.ingredients }}</p>
+        </div>
+        <div class="detail-section" v-if="detailRecipe?.steps">
+          <strong>📝 做法</strong>
+          <ol class="steps-list">
+            <li v-for="(step, i) in parseSteps(detailRecipe.steps)" :key="i">{{ step }}</li>
+          </ol>
+        </div>
+        <div class="detail-section" v-if="detailRecipe?.reason">
+          <strong>💡 推荐理由</strong>
+          <p>{{ detailRecipe?.reason }}</p>
+        </div>
+        <button class="btn btn-outline" @click="showDetailModal=false" style="margin-top:12px;width:100%">关闭</button>
       </div>
     </div>
   </div>
@@ -67,25 +104,16 @@ import { ref, onMounted } from 'vue'
 import api from '../api/index.js'
 
 const recommendations = ref([])
-const alerts = ref([])
 const loading = ref(false)
 const noMore = ref(false)
-const today = new Date().toISOString().split('T')[0]
+const showDetailModal = ref(false)
+const detailRecipe = ref(null)
 
 async function fetchRecommendations() {
   loading.value = true
   try {
-    const [recRes, alertRes] = await Promise.all([
-      api.getRecommendations(),
-      api.checkAlerts(today)
-    ])
-    recommendations.value = recRes.data.data || []
-    const alertData = alertRes.data.data
-    if (alertData?.hasAlert) {
-      alerts.value = alertData.alerts || []
-    } else {
-      alerts.value = []
-    }
+    const res = await api.getRecommendations()
+    recommendations.value = res.data.data || []
     noMore.value = recommendations.value.length === 0
   } catch (e) {
     console.error(e)
@@ -112,9 +140,19 @@ async function dislike(recommendationId) {
   }
 }
 
+function viewDetail(rec) {
+  detailRecipe.value = rec
+  showDetailModal.value = true
+}
+
 function parseTags(tags) {
   if (!tags) return []
   return tags.split(',').map(t => t.trim()).filter(Boolean)
+}
+
+function parseSteps(steps) {
+  if (!steps) return []
+  return steps.split('\n').filter(Boolean)
 }
 
 function matchColor(score) {
@@ -170,6 +208,7 @@ onMounted(fetchRecommendations)
 .rec-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 8px;
 }
 
@@ -179,5 +218,56 @@ onMounted(fetchRecommendations)
   color: #999;
   font-size: 13px;
 }
-.alert-card { margin-top: 12px; }
+
+/* Recipe detail modal */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-content h3 { margin-bottom: 12px; }
+.recipe-detail .detail-tags { margin-bottom: 12px; }
+.detail-nutrition {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.detail-nut-item {
+  text-align: center;
+}
+.nut-value { font-size: 18px; font-weight: 700; color: #4CAF50; display: block; }
+.nut-label { font-size: 11px; color: #999; }
+.detail-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.detail-section p { font-size: 14px; color: #555; line-height: 1.6; margin-top: 4px; }
+.steps-list {
+  padding-left: 20px;
+  margin-top: 4px;
+}
+.steps-list li {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
 </style>

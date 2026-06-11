@@ -7,7 +7,12 @@
       <div class="card user-card">
         <div class="user-avatar">👤</div>
         <div class="user-info">
-          <h3>{{ profile.nickname || '用户' }}</h3>
+          <div class="nickname-row">
+            <input v-if="editingNickname" ref="nicknameInput"
+                   v-model="nicknameDraft" @blur="saveNickname" @keyup.enter="saveNickname"
+                   class="nickname-input">
+            <h3 v-else @click="startEditNickname">{{ profile.nickname || '用户' }} ✎</h3>
+          </div>
           <p v-if="profile.age || profile.heightCm || profile.weightKg">
             {{ profile.age || '-' }}岁 |
             {{ profile.heightCm || '-' }}cm |
@@ -104,6 +109,21 @@
       <!-- Save button -->
       <button class="btn btn-primary save-btn" @click="saveProfile">保存设置</button>
 
+      <!-- Privacy notice -->
+      <div class="card privacy-card">
+        <h3 class="card-title">🔒 隐私说明</h3>
+        <div class="privacy-content">
+          <p>本系统为《AI智能个人健康饮食助手》课程实验作品。我们郑重承诺：</p>
+          <ul>
+            <li>仅采集完成课程实验必需的数据（年龄、身高、体重、饮食目标、口味偏好、忌口标签）</li>
+            <li>不采集真实姓名、手机号、身份证、支付信息等高敏个人信息</li>
+            <li>所有健康数据仅存储在本地实验数据库，不对外泄露或共享</li>
+            <li>拍照和语音数据仅用于 AI 识别，处理完成后不长期留存原始文件</li>
+            <li>饮食建议和健康评分仅供参考，不替代专业医生诊断</li>
+          </ul>
+        </div>
+      </div>
+
       <!-- App info -->
       <div class="app-info">
         <p>AI智能个人健康饮食助手 v1.0</p>
@@ -114,12 +134,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
 
 const loading = ref(false)
 const profile = ref(null)
 const alertRules = ref([])
+const nicknameInput = ref(null)
+
+const editingNickname = ref(false)
+const nicknameDraft = ref('')
 
 const tasteOptions = ['清淡', '中式', '西式', '日式', '辣味', '酸甜', '咸鲜']
 const tabooOptions = ['海鲜', '花生', '牛奶', '鸡蛋', '豆制品', ' gluten', '辛辣']
@@ -163,6 +187,27 @@ async function fetchData() {
     console.error(e)
   } finally {
     loading.value = false
+  }
+}
+
+function startEditNickname() {
+  nicknameDraft.value = profile.value?.nickname || ''
+  editingNickname.value = true
+  nextTick(() => {
+    nicknameInput.value?.focus()
+  })
+}
+
+async function saveNickname() {
+  editingNickname.value = false
+  const trimmed = nicknameDraft.value.trim()
+  if (trimmed && trimmed !== profile.value?.nickname) {
+    try {
+      await api.updateNickname(trimmed)
+      profile.value.nickname = trimmed
+    } catch (e) {
+      console.error('Failed to update nickname', e)
+    }
   }
 }
 
@@ -236,7 +281,21 @@ onMounted(fetchData)
   align-items: center;
   justify-content: center;
 }
-.user-info h3 { font-size: 18px; margin-bottom: 4px; }
+.user-info .nickname-row h3 {
+  font-size: 18px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.user-info .nickname-row h3:hover { color: #4CAF50; }
+.nickname-input {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid #4CAF50;
+  border-radius: 6px;
+  width: auto;
+  max-width: 200px;
+}
 .user-info p { font-size: 13px; color: #666; }
 
 .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
@@ -337,6 +396,23 @@ input:checked + .slider:before { transform: translateX(20px); }
   margin-top: 16px;
   padding: 12px;
   font-size: 16px;
+}
+
+.privacy-card {
+  background: #FAFAFA;
+  border: 1px solid #e0e0e0;
+}
+.privacy-content {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.7;
+}
+.privacy-content ul {
+  padding-left: 18px;
+  margin-top: 6px;
+}
+.privacy-content ul li {
+  margin-bottom: 4px;
 }
 
 .app-info {
