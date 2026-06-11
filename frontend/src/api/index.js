@@ -41,6 +41,27 @@ export default {
     return api.post('/recommendations/feedback', { recommendationId, feedback })
   },
 
+  // Food recognition (image upload)
+  recognizeFood(formData) {
+    return api.post('/food/recognize', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 15000,
+    })
+  },
+
+  // Voice parse
+  parseVoice(formData) {
+    return api.post('/voice/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 15000,
+    })
+  },
+
+  // Food text analysis (for manual add smart analysis)
+  analyzeFoodText(foodName) {
+    return api.post('/food/analyze-text', { foodName }, { timeout: 10000 })
+  },
+
   // Alert rules
   getAlertRules() {
     return api.get('/alert-rules', { params: { userId: USER_ID } })
@@ -61,5 +82,8 @@ export default {
   },
   updateProfile(data) {
     return api.put('/user-profile', data, { params: { userId: USER_ID } })
+  },
+  updateNickname(nickname) {
+    return api.put('/user-profile/nickname', { nickname }, { params: { userId: USER_ID } })
   },
 }
