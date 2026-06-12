@@ -3,6 +3,10 @@ import axios from 'axios'
 
 const STORAGE_KEY = 'diet_auth'
 
+function authHeaders() {
+  return { Authorization: `Bearer ${state.token}` }
+}
+
 const state = reactive({
   isLoggedIn: false,
   userId: null,
@@ -70,7 +74,7 @@ async function register(username, password) {
 
 async function logout() {
   try {
-    await axios.post('/api/auth/logout')
+    await axios.post('/api/auth/logout', {}, { headers: authHeaders() })
   } catch (e) {
     // 即使 API 调用失败也清除本地状态
   }
@@ -86,7 +90,9 @@ async function logout() {
 async function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await axios.post('/api/auth/avatar', formData)
+  const res = await axios.post('/api/auth/avatar', formData, {
+    headers: authHeaders(),
+  })
   const avatarUrl = res.data.data
   state.avatarUrl = avatarUrl
   saveToStorage()
