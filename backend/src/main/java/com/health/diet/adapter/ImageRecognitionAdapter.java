@@ -55,20 +55,23 @@ public class ImageRecognitionAdapter {
             2. 给出置信度（0.0-1.0）
             3. 估算每份的营养成分（热量/kcal, 蛋白质/g, 脂肪/g, 碳水化合物/g, 糖/g, 钠/mg）
 
+            **重要规则：复合菜品（如"韭菜炒鸡蛋""番茄炒蛋""青椒肉丝"）必须作为一个完整食物识别，
+            不要拆分为单独的食材。** 图片中每一道完整的菜是一个食物条目，营养按整道菜估算。
+
             严格按以下JSON格式返回，不要包含其他文字：
             {"foods":[{"name":"食物名","confidence":0.95,"calorie":120,"protein":2.5,"fat":0.3,"carbohydrate":26.0,"sugar":0.1,"sodium":2.0}]}
             """;
 
         Map<String, Object> body = buildMultimodalBody(systemPrompt,
-                "请识别图片中所有的食物并估算营养成分。",
+                "请识别图片中所有的食物（每道菜作为一个整体）并估算营养成分。",
                 "image", "data:" + mime + ";base64," + base64);
 
         try {
             String resp = callApi(body);
             return parseFoodLabels(resp);
         } catch (Exception e) {
-            log.error("千问图片识别失败，降级为本地模拟数据", e);
-            return fallbackResults();
+            log.error("千问图片识别失败", e);
+            throw new RuntimeException("AI 图片识别服务暂时不可用，请重试", e);
         }
     }
 
@@ -84,16 +87,17 @@ public class ImageRecognitionAdapter {
             {"foods":[{"name":"食物名","confidence":0.90,"calorie":120,"protein":2.5,"fat":0.3,"carbohydrate":26.0,"sugar":0.1,"sodium":2.0}]}
             """;
 
-        Map<String, Object> body = buildTextBody(systemPrompt,
+        // 使用多模态端点（纯文本），避免兼容模式 403
+        Map<String, Object> body = buildTextMultimodalBody(systemPrompt,
                 "请分析以下食物的营养成分：" + foodName);
 
         try {
-            String resp = callTextApi(body);
+            String resp = callApi(body);
             List<FoodLabel> labels = parseFoodLabels(resp);
-            return labels.isEmpty() ? fallbackTextResult(foodName) : labels.get(0);
+            return labels.isEmpty() ? null : labels.get(0);
         } catch (Exception e) {
-            log.error("千问文本分析失败，降级为本地模拟数据", e);
-            return fallbackTextResult(foodName);
+            log.error("千问文本分析失败", e);
+            throw new RuntimeException("AI 文本分析服务暂时不可用，请重试", e);
         }
     }
 
@@ -116,7 +120,19 @@ public class ImageRecognitionAdapter {
         );
     }
 
-    /** 构建文本 API 请求体（OpenAI 兼容格式，更便宜） */
+    /** 构建纯文本多模态请求体（无图片，用多模态端点避免 403） */
+    private Map<String, Object> buildTextMultimodalBody(String system, String prompt) {
+        return Map.of(
+            "model", config.getModel(),
+            "input", Map.of("messages", List.of(
+                Map.of("role", "system", "content", List.of(Map.of("text", system))),
+                Map.of("role", "user", "content", List.of(Map.of("text", prompt)))
+            )),
+            "parameters", Map.of("max_tokens", config.getMaxTokens())
+        );
+    }
+
+    /** 构建文本 API 请求体（OpenAI 兼容格式，备用） */
     private Map<String, Object> buildTextBody(String system, String prompt) {
         return Map.of(
             "model", config.getTextModel(),
@@ -174,7 +190,7 @@ public class ImageRecognitionAdapter {
         List<Map<String, Object>> foods = (List<Map<String, Object>>) foodsRoot.get("foods");
         if (foods == null || foods.isEmpty()) {
             log.warn("API 未返回食物数据");
-            return fallbackResults();
+            return List.of();
         }
 
         return foods.stream().map(f -> new FoodLabel(
@@ -233,20 +249,6 @@ public class ImageRecognitionAdapter {
             }
         }
         return text;
-    }
-
-    // ==================== 降级数据 ====================
-
-    private List<FoodLabel> fallbackResults() {
-        return List.of(
-            new FoodLabel("米饭", 0.95, bd(116), bd(2.6), bd(0.3), bd(25.9), bd(0.1), bd(2)),
-            new FoodLabel("红烧肉", 0.82, bd(350), bd(18), bd(30), bd(5), bd(2), bd(480)),
-            new FoodLabel("炒青菜", 0.78, bd(45), bd(2), bd(3), bd(3.5), bd(0.5), bd(200))
-        );
-    }
-
-    private FoodLabel fallbackTextResult(String foodName) {
-        return new FoodLabel(foodName, 0.85, bd(150), bd(5), bd(5), bd(20), bd(2), bd(100));
     }
 
     // ==================== 工具方法 ====================

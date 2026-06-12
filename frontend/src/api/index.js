@@ -50,12 +50,24 @@ export default {
     })
   },
 
-  // Voice parse
-  parseVoice(formData) {
-    return api.post('/voice/parse', formData, {
+  // Voice parse (with duration)
+  parseVoice(formData, durationSeconds) {
+    const params = durationSeconds ? `?durationSeconds=${durationSeconds}` : ''
+    return api.post('/voice/parse' + params, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 15000,
+      timeout: 20000,
     })
+  },
+
+  // Voice records
+  getVoiceRecords(date) {
+    return api.get('/voice-records', { params: { userId: USER_ID, date } })
+  },
+  deleteVoiceRecord(id) {
+    return api.delete(`/voice-records/${id}`)
+  },
+  updateVoiceRecordMealType(id, mealType) {
+    return api.put(`/voice-records/${id}/meal-type`, { mealType })
   },
 
   // Food text analysis (for manual add smart analysis)

@@ -181,6 +181,25 @@ CREATE TABLE `meal_photo` (
     CONSTRAINT `fk_meal_photo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='餐次照片表（一餐可有多张照片）';
 
+-- ============================================================
+-- 10. voice_record 表（语音录音）
+-- ============================================================
+DROP TABLE IF EXISTS `voice_record`;
+CREATE TABLE `voice_record` (
+    `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '录音主键',
+    `user_id`          BIGINT       NOT NULL                COMMENT '所属用户',
+    `record_date`      DATE         NOT NULL                COMMENT '录音日期',
+    `audio_url`        VARCHAR(255) NOT NULL                COMMENT '音频文件相对路径',
+    `transcribed_text` TEXT         DEFAULT NULL            COMMENT '语音转文字结果',
+    `food_entities`    TEXT         DEFAULT NULL            COMMENT '解析出的食物实体(JSON)',
+    `duration_seconds` INT          DEFAULT 0               COMMENT '录音时长(秒)',
+    `meal_type`        VARCHAR(16)  DEFAULT NULL            COMMENT '餐次（用户确认后回填）',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_date` (`user_id`, `record_date`),
+    CONSTRAINT `fk_voice_record_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='语音录音记录表';
+
 -- 重新启用外键检查
 SET FOREIGN_KEY_CHECKS = 1;
 

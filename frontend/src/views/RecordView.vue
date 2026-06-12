@@ -87,6 +87,20 @@
 
           <div class="meal-divider"></div>
 
+          <!-- Voice records for this meal -->
+          <div class="voice-records-mini" v-if="voiceRecordsByMeal[meal.key]?.length">
+            <div class="voice-mini-card" v-for="vr in voiceRecordsByMeal[meal.key]" :key="vr.id">
+              <div class="voice-mini-header">
+                <span class="voice-mini-icon">🎵</span>
+                <span class="voice-mini-duration">{{ vr.durationSeconds || 0 }}秒</span>
+                <button class="voice-play-btn" @click.stop="playVoice(vr)">
+                  {{ playingVoiceId === vr.id ? '⏸ 暂停' : '▶️ 播放' }}
+                </button>
+                <button class="voice-delete-btn" @click.stop="deleteVoiceRecord(vr.id)">删除</button>
+              </div>
+              <div class="voice-mini-text">{{ vr.transcribedText || '(无识别文本)' }}</div>
+            </div>
+          </div>
           <!-- Food items -->
           <div class="food-item" v-for="rec in groupedRecords[meal.key]" :key="rec.id">
             <div class="food-main">
@@ -112,6 +126,9 @@
         </div>
       </div>
     </template>
+
+    <!-- Hidden audio player for voice playback -->
+    <audio ref="voiceAudioRef" style="display:none" @ended="onVoiceEnded" preload="auto"></audio>
 
     <div v-if="!Object.values(groupedRecords).some(g => g.length)" class="empty-state">
       <div class="empty-icon">🍽️</div>
@@ -215,53 +232,84 @@
       <div class="modal-content">
         <h3>🎤 语音输入</h3>
 
-        <input type="file" ref="voiceInputRef" accept="audio/*" capture
-               style="display:none" @change="onVoiceFileSelected">
-
-        <div class="mock-camera" @click="triggerVoiceFileInput" v-if="!voiceFile && !voiceAnalyzed">
-          <span>🎙️ 点击录音或选择音频文件</span>
-        </div>
-        <div class="file-selected" v-if="voiceFile && !voiceAnalyzed && !voiceLoading">
-          <span class="file-icon">🎵</span>
-          <span class="file-name">{{ voiceFile.name }}</span>
+        <!-- Idle: ready to record -->
+        <div class="voice-record-area" v-if="!voiceRecording && !voiceLoading && !voiceAnalyzed && !voiceError">
+          <div class="voice-record-btn" @click="startVoiceRecord">
+            <span class="voice-mic-icon">🎙️</span>
+            <span>点击开始录音</span>
+          </div>
         </div>
 
+        <!-- Recording -->
+        <div class="voice-record-area recording" v-if="voiceRecording">
+          <div class="voice-recording-indicator">
+            <span class="recording-dot"></span>
+            <span>录音中...</span>
+          </div>
+          <div class="voice-timer">{{ formatVoiceTime(voiceElapsed) }}</div>
+          <button class="btn btn-stop" @click="stopVoiceRecord">⏹ 停止录音</button>
+        </div>
+
+        <!-- Loading -->
         <div v-if="voiceLoading" class="loading" style="padding:20px">🤖 AI 智能分析中，请稍候...</div>
 
-        <div v-if="voiceAnalyzed && voiceResult && !voiceError" class="voice-result">
-          <p><strong>识别文本：</strong>{{ voiceResult.transcribedText }}</p>
-          <div v-for="(entity, i) in voiceResult.foodEntities" :key="i" class="entity-row">
-            <input v-model="entity.foodName" placeholder="食物名称">
-            <input type="number" v-model.number="entity.amount" placeholder="份量" style="width:60px">
-            <select v-model="entity.mealType" style="width:80px">
+        <!-- Results (photo-modal style) -->
+        <div v-if="voiceAnalyzed && voiceResult && !voiceError">
+          <p style="font-size:13px;color:#666;margin-bottom:6px">
+            <strong>识别文本：</strong>{{ voiceResult.transcribedText }}
+          </p>
+          <p style="font-size:13px;color:#666;margin-bottom:8px">
+            解析到 {{ voiceResult.foodEntities.length }} 种食物，请勾选要保存的食物：
+          </p>
+
+          <div class="candidate-check-item" v-for="(e, i) in voiceResult.foodEntities" :key="i"
+               :class="{ checked: e._checked }">
+            <label class="check-row" @click.stop>
+              <input type="checkbox" v-model="e._checked" class="check-box">
+              <span class="candidate-name">{{ e.foodName }}</span>
+              <span class="candidate-confidence" style="color:#2196F3">语音</span>
+            </label>
+            <div class="candidate-nutrition" v-if="e.calorie != null">
+              <span>🔥{{ e.calorie }}kcal</span>
+              <span>🥩{{ e.protein }}g</span>
+              <span>🧈{{ e.fat }}g</span>
+              <span>🌾{{ e.carbohydrate }}g</span>
+              <span v-if="e.sugar != null">🍬{{ e.sugar }}g</span>
+              <span v-if="e.sodium != null">🧂{{ e.sodium }}mg</span>
+            </div>
+            <div class="amount-row" v-if="e._checked">
+              <label>份量：</label>
+              <input type="number" v-model.number="e.amount" min="0.1" step="0.5" class="amount-input">
+              <span class="amount-unit">{{ e.unit || '份' }}</span>
+            </div>
+          </div>
+
+          <!-- Unified meal type selector -->
+          <div class="modal-actions" style="margin-top:12px">
+            <label style="font-size:13px;color:#666">统一餐次：</label>
+            <select v-model="voiceMealType">
               <option value="早餐">早餐</option>
               <option value="午餐">午餐</option>
               <option value="晚餐">晚餐</option>
               <option value="夜宵">夜宵</option>
               <option value="其他">其他</option>
             </select>
+            <button class="btn btn-primary save-all-btn"
+                    :disabled="voiceSaving || voiceCheckedCount === 0"
+                    @click="saveFromVoice">
+              {{ voiceSaving ? '⏳ 保存中...' : `✅ 确认保存 (${voiceCheckedCount}种)` }}
+            </button>
           </div>
-          <button class="btn btn-primary" @click="saveFromVoice" style="margin-top:12px"
-                  :disabled="voiceSaving">
-            {{ voiceSaving ? '⏳ 保存中...' : '确认保存' }}
-          </button>
         </div>
 
+        <!-- Error -->
         <div v-if="voiceError" class="error-msg">
           <p>❌ {{ voiceError }}</p>
           <button class="btn btn-sm btn-outline" @click="retryVoice" style="margin-top:8px">重新录音</button>
         </div>
 
-        <div class="modal-bottom-bar" v-if="!voiceAnalyzed">
-          <button class="btn btn-sm analyze-btn"
-                  :class="{ ready: voiceFile && !voiceLoading }"
-                  :disabled="!voiceFile || voiceLoading"
-                  @click="startVoiceAnalyze">
-            🤖 智能分析
-          </button>
-          <button class="btn btn-sm btn-outline cancel-btn" @click="closeVoiceModal">取消</button>
-        </div>
-        <div class="modal-bottom-bar" v-if="voiceAnalyzed || voiceError">
+        <!-- Bottom bar -->
+        <div class="modal-bottom-bar" v-if="!voiceRecording && !voiceLoading">
           <button class="btn btn-sm btn-outline cancel-btn" @click="closeVoiceModal"
                   :disabled="voiceSaving">取消</button>
         </div>
@@ -430,6 +478,18 @@ const mealTotals = computed(() => {
 
 // Meal photos loaded from backend API
 const mealPhotos = ref({})
+// Voice records loaded from backend API
+const voiceRecords = ref([])
+
+// Group voice records by meal type
+const voiceRecordsByMeal = computed(() => {
+  const groups = {}
+  voiceRecords.value.forEach(v => {
+    if (!groups[v.mealType]) groups[v.mealType] = []
+    groups[v.mealType].push(v)
+  })
+  return groups
+})
 
 // ==================== Photo Modal State ====================
 const showPhotoModal = ref(false)
@@ -445,13 +505,22 @@ const photoAnalyzedResultImageUrl = ref(null)   // 识别返回的 imageUrl
 
 // ==================== Voice Modal State ====================
 const showVoiceModal = ref(false)
-const voiceInputRef = ref(null)
-const voiceFile = ref(null)
+const voiceRecording = ref(false)
+const voiceElapsed = ref(0)
 const voiceLoading = ref(false)
 const voiceAnalyzed = ref(false)
 const voiceResult = ref(null)
 const voiceError = ref(null)
 const voiceSaving = ref(false)
+const voiceMealType = ref('午餐')   // 统一餐次选择
+const voiceCheckedCount = computed(() =>
+  voiceResult.value?.foodEntities?.filter(e => e._checked).length || 0
+)
+
+let voiceMediaRecorder = null
+let voiceChunks = []
+let voiceTimer = null
+let voiceStartTime = null
 
 // ==================== Manual Modal State ====================
 const showManualModal = ref(false)
@@ -472,10 +541,11 @@ const checkedCount = computed(() =>
 // ==================== Data Fetching ====================
 async function fetchData() {
   try {
-    const [recRes, nutRes, photoRes] = await Promise.all([
+    const [recRes, nutRes, photoRes, voiceRes] = await Promise.all([
       api.getDietRecords(today),
       api.getNutrition(today),
       api.getMealPhotos(today),
+      api.getVoiceRecords(today),
     ])
     records.value = recRes.data.data || []
     todayNutrition.value = nutRes.data.data
@@ -488,6 +558,9 @@ async function fetchData() {
       photos[p.mealType].push(p)
     })
     mealPhotos.value = photos
+
+    // Store voice records for display
+    voiceRecords.value = voiceRes.data.data || []
 
     // Auto-expand meals that have records
     mealTypes.forEach(m => {
@@ -639,49 +712,84 @@ async function saveFromPhoto() {
 }
 
 // ==================== Voice Modal ====================
+function formatVoiceTime(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+}
+
 function openVoiceModal() {
   showVoiceModal.value = true
-  voiceFile.value = null
+  voiceRecording.value = false
   voiceAnalyzed.value = false
   voiceResult.value = null
   voiceError.value = null
   voiceLoading.value = false
   voiceSaving.value = false
+  voiceElapsed.value = 0
 }
 
 function closeVoiceModal() {
   if (voiceSaving.value) return
+  cleanupVoiceRecorder()
   showVoiceModal.value = false
-  voiceFile.value = null
-  voiceAnalyzed.value = false
-  voiceResult.value = null
-  voiceError.value = null
-  voiceLoading.value = false
-  voiceSaving.value = false
 }
 
-function triggerVoiceFileInput() { voiceInputRef.value?.click() }
+async function startVoiceRecord() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    voiceMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+    voiceChunks = []
 
-function onVoiceFileSelected(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  voiceFile.value = file
-  voiceAnalyzed.value = false
-  voiceResult.value = null
-  voiceError.value = null
+    voiceMediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) voiceChunks.push(e.data)
+    }
+
+    voiceMediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop())
+      // Auto trigger analysis after recording stops
+      voiceAnalyzeBlob()
+    }
+
+    voiceMediaRecorder.start()
+    voiceRecording.value = true
+    voiceStartTime = Date.now()
+    voiceTimer = setInterval(() => {
+      voiceElapsed.value = Math.floor((Date.now() - voiceStartTime) / 1000)
+    }, 200)
+  } catch (e) {
+    console.error('麦克风访问失败', e)
+    voiceError.value = '无法访问麦克风，请检查浏览器权限设置'
+  }
 }
 
-async function startVoiceAnalyze() {
-  if (!voiceFile.value) return
+function stopVoiceRecord() {
+  if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+    voiceMediaRecorder.stop()
+    voiceRecording.value = false
+    if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null }
+  }
+}
+
+async function voiceAnalyzeBlob() {
+  if (!voiceChunks.length) return
   voiceLoading.value = true
   voiceError.value = null
   voiceResult.value = null
+
   try {
+    const blob = new Blob(voiceChunks, { type: 'audio/webm' })
     const formData = new FormData()
-    formData.append('audio', voiceFile.value)
-    const res = await api.parseVoice(formData)
+    formData.append('audio', blob, 'recording.webm')
+    const duration = voiceElapsed.value
+    const res = await api.parseVoice(formData, duration)
     const data = res.data.data
     if (data?.foodEntities?.length) {
+      // Add checkbox state to each entity (match photo modal pattern)
+      data.foodEntities.forEach(e => {
+        e._checked = true
+        e._amount = e.amount || 1
+      })
       voiceResult.value = data
       voiceAnalyzed.value = true
     } else {
@@ -699,44 +807,89 @@ function retryVoice() {
   voiceError.value = null
   voiceAnalyzed.value = false
   voiceResult.value = null
-  voiceFile.value = null
-  if (voiceInputRef.value) voiceInputRef.value.value = ''
+  voiceRecording.value = false
+  voiceElapsed.value = 0
+  voiceChunks = []
+}
+
+// ==================== Voice Playback ====================
+const voiceAudioRef = ref(null)
+const playingVoiceId = ref(null)
+
+function playVoice(vr) {
+  if (playingVoiceId.value === vr.id) {
+    voiceAudioRef.value?.pause()
+    playingVoiceId.value = null
+    return
+  }
+  const audio = voiceAudioRef.value
+  if (audio) {
+    audio.src = '/api/uploads' + vr.audioUrl
+    audio.play().catch(e => console.error('语音播放失败', e))
+    playingVoiceId.value = vr.id
+  }
+}
+
+function onVoiceEnded() {
+  playingVoiceId.value = null
+}
+
+async function deleteVoiceRecord(id) {
+  if (!confirm('确定删除这条语音记录？')) return
+  try {
+    await api.deleteVoiceRecord(id)
+    await fetchData()
+  } catch (e) {
+    console.error('删除语音记录失败', e)
+    alert('删除失败')
+  }
+}
+
+function cleanupVoiceRecorder() {
+  if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null }
+  if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+    voiceMediaRecorder.stop()
+  }
+  voiceMediaRecorder = null
+  voiceChunks = []
 }
 
 async function saveFromVoice() {
+  const checked = voiceResult.value.foodEntities.filter(e => e._checked)
+  if (!checked.length) return
+
   voiceSaving.value = true
   let saved = 0, failed = 0
 
-  for (const entity of voiceResult.value.foodEntities) {
+  for (const entity of checked) {
     try {
-      // 语音识别的食物先尝试查库获取营养
-      let nutrition = {}
-      try {
-        const analysisRes = await api.analyzeFoodText(entity.foodName)
-        if (analysisRes.data.data) {
-          const n = analysisRes.data.data
-          nutrition = {
-            calorie: n.calorie,
-            protein: n.protein,
-            fat: n.fat,
-            carbohydrate: n.carbohydrate,
-            sugar: n.sugar,
-            sodium: n.sodium,
-          }
-        }
-      } catch (e) { /* 查库失败不阻塞保存 */ }
-
+      // 使用 AI 已经返回的营养数据，如果为空再兜底查库
       await api.createDietRecord({
         foodName: entity.foodName,
-        mealType: entity.mealType || '午餐',
-        amount: entity.amount,
+        mealType: voiceMealType.value,
+        amount: entity._amount || entity.amount || 1,
         source: 'voice',
-        ...nutrition,
+        calorie: entity.calorie,
+        protein: entity.protein,
+        fat: entity.fat,
+        carbohydrate: entity.carbohydrate,
+        sugar: entity.sugar,
+        sodium: entity.sodium,
       })
       saved++
     } catch (e) {
       failed++
       console.error(`语音-保存 ${entity.foodName} 失败`, e)
+    }
+  }
+
+  // ② 回填语音记录的餐次类型
+  const voiceRecordId = voiceResult.value?.voiceRecordId
+  if (voiceRecordId) {
+    try {
+      await api.updateVoiceRecordMealType(voiceRecordId, voiceMealType.value)
+    } catch (e) {
+      console.error('更新语音记录餐次失败', e)
     }
   }
 
@@ -1062,6 +1215,131 @@ onMounted(async () => {
   border-radius: 12px;
   object-fit: contain;
 }
+
+/* ==================== Voice Mini Cards in Meal ==================== */
+.voice-records-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.voice-mini-card {
+  background: #F3E5F5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #9C27B0;
+}
+.voice-mini-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.voice-mini-icon { font-size: 16px; }
+.voice-mini-duration {
+  font-size: 12px;
+  color: #7B1FA2;
+  font-weight: 500;
+}
+.voice-play-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #9C27B0;
+  background: #fff;
+  color: #9C27B0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.voice-play-btn:hover { background: #F3E5F5; }
+.voice-delete-btn {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #999;
+  font-size: 11px;
+  cursor: pointer;
+}
+.voice-mini-text {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==================== Voice Recording Styles ==================== */
+.voice-record-area {
+  text-align: center;
+  padding: 32px 16px;
+}
+.voice-record-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 48px;
+  background: #E8F5E9;
+  border: 2px dashed #4CAF50;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+  color: #2E7D32;
+}
+.voice-record-btn:hover { background: #C8E6C9; }
+.voice-record-btn:active { transform: scale(0.96); }
+.voice-mic-icon { font-size: 48px; }
+
+.voice-record-area.recording {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: #FFF3F0;
+  border: 2px solid #f44336;
+  border-radius: 20px;
+}
+.voice-recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f44336;
+}
+.recording-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f44336;
+  animation: recording-blink 0.6s infinite alternate;
+}
+@keyframes recording-blink {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0.3; transform: scale(1.3); }
+}
+.voice-timer {
+  font-size: 36px;
+  font-weight: 700;
+  color: #333;
+  font-variant-numeric: tabular-nums;
+}
+.btn-stop {
+  padding: 10px 28px;
+  border-radius: 12px;
+  border: none;
+  background: #f44336;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-stop:active { opacity: 0.8; }
 
 /* ==================== Modal Styles (preserved) ==================== */
 .modal-overlay {
