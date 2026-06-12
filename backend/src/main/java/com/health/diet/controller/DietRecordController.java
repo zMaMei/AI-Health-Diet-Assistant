@@ -5,6 +5,7 @@ import com.health.diet.dto.command.DietRecordCreateCommand;
 import com.health.diet.dto.command.DietRecordUpdateCommand;
 import com.health.diet.dto.vo.DietRecordVO;
 import com.health.diet.service.DietRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,9 @@ public class DietRecordController {
     }
 
     @PostMapping
-    public ApiResponse<Long> create(@Valid @RequestBody DietRecordCreateCommand command) {
+    public ApiResponse<Long> create(@Valid @RequestBody DietRecordCreateCommand command,
+                                     HttpServletRequest request) {
+        command.setUserId((Long) request.getAttribute("userId"));
         log.info("POST /api/diet-records — 创建饮食记录: userId={}, foodName={}, mealType={}, amount={}, source={}",
                 command.getUserId(), command.getFoodName(), command.getMealType(),
                 command.getAmount(), command.getSource());
@@ -38,8 +41,9 @@ public class DietRecordController {
 
     @GetMapping
     public ApiResponse<List<DietRecordVO>> list(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.debug("GET /api/diet-records — 查询记录: userId={}, date={}", userId, date);
         List<DietRecordVO> result = dietRecordService.list(userId, date);
         return ApiResponse.success(result);

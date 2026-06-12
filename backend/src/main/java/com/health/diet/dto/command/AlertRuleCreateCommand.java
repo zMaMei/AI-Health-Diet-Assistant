@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 
 public class AlertRuleCreateCommand {
 
-    @NotNull
     private Long userId;
 
     @NotBlank

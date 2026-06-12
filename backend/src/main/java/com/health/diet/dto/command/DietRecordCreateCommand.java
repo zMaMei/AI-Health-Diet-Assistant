@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 
 public class DietRecordCreateCommand {
 
-    @NotNull
     private Long userId;
 
     private Long foodId;

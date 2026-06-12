@@ -6,6 +6,7 @@ import com.health.diet.dto.command.AlertRuleUpdateCommand;
 import com.health.diet.dto.vo.AlertCheckResultVO;
 import com.health.diet.dto.vo.AlertRuleVO;
 import com.health.diet.service.AlertService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -24,12 +25,15 @@ public class AlertRuleController {
     }
 
     @PostMapping
-    public ApiResponse<Long> createRule(@Valid @RequestBody AlertRuleCreateCommand command) {
+    public ApiResponse<Long> createRule(@Valid @RequestBody AlertRuleCreateCommand command,
+                                         HttpServletRequest request) {
+        command.setUserId((Long) request.getAttribute("userId"));
         return ApiResponse.success(alertService.createRule(command));
     }
 
     @GetMapping
-    public ApiResponse<List<AlertRuleVO>> listRules(@RequestParam Long userId) {
+    public ApiResponse<List<AlertRuleVO>> listRules(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         return ApiResponse.success(alertService.listRules(userId));
     }
 
@@ -42,8 +46,9 @@ public class AlertRuleController {
 
     @GetMapping("/check")
     public ApiResponse<AlertCheckResultVO> check(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         return ApiResponse.success(alertService.checkAfterRecordSaved(userId, date));
     }
 }

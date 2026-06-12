@@ -3,6 +3,7 @@ package com.health.diet.controller;
 import com.health.diet.common.ApiResponse;
 import com.health.diet.dto.vo.HealthScoreVO;
 import com.health.diet.service.HealthScoreService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,8 +21,9 @@ public class HealthScoreController {
 
     @GetMapping("/daily")
     public ApiResponse<HealthScoreVO> getDailyScore(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         return ApiResponse.success(healthScoreService.getDailyScore(userId, date));
     }
 }
