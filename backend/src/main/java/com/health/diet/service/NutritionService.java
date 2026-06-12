@@ -1,12 +1,9 @@
 package com.health.diet.service;
 
 import com.health.diet.dto.vo.NutritionDailyVO;
-import com.health.diet.entity.DietRecord;
-import com.health.diet.entity.FoodItem;
 import com.health.diet.entity.NutritionRecord;
 import com.health.diet.entity.UserProfile;
 import com.health.diet.repository.DietRecordRepository;
-import com.health.diet.repository.FoodItemRepository;
 import com.health.diet.repository.NutritionRecordRepository;
 import com.health.diet.repository.UserProfileRepository;
 import org.springframework.stereotype.Service;
@@ -21,7 +18,6 @@ import java.util.List;
 public class NutritionService {
 
     private final DietRecordRepository dietRecordRepository;
-    private final FoodItemRepository foodItemRepository;
     private final NutritionRecordRepository nutritionRecordRepository;
     private final UserProfileRepository userProfileRepository;
 
@@ -31,56 +27,27 @@ public class NutritionService {
     private static final BigDecimal DEFAULT_CARB_GOAL = new BigDecimal("300");
 
     public NutritionService(DietRecordRepository dietRecordRepository,
-                            FoodItemRepository foodItemRepository,
                             NutritionRecordRepository nutritionRecordRepository,
                             UserProfileRepository userProfileRepository) {
         this.dietRecordRepository = dietRecordRepository;
-        this.foodItemRepository = foodItemRepository;
         this.nutritionRecordRepository = nutritionRecordRepository;
         this.userProfileRepository = userProfileRepository;
     }
 
     public NutritionDailyVO getDaily(Long userId, LocalDate date) {
-        List<DietRecord> records = dietRecordRepository.findByUserAndDate(userId, date);
-
         NutritionDailyVO vo = new NutritionDailyVO();
-        if (records.isEmpty()) {
-            vo.setCalorieTotal(BigDecimal.ZERO);
-            vo.setProteinTotal(BigDecimal.ZERO);
-            vo.setFatTotal(BigDecimal.ZERO);
-            vo.setCarbohydrateTotal(BigDecimal.ZERO);
-            vo.setSugarTotal(BigDecimal.ZERO);
-            vo.setSodiumTotal(BigDecimal.ZERO);
-        } else {
-            BigDecimal calorie = BigDecimal.ZERO;
-            BigDecimal protein = BigDecimal.ZERO;
-            BigDecimal fat = BigDecimal.ZERO;
-            BigDecimal carb = BigDecimal.ZERO;
-            BigDecimal sugar = BigDecimal.ZERO;
-            BigDecimal sodium = BigDecimal.ZERO;
 
-            for (DietRecord record : records) {
-                if (record.getFoodId() != null) {
-                    FoodItem food = foodItemRepository.findById(record.getFoodId()).orElse(null);
-                    if (food != null) {
-                        BigDecimal ratio = record.getAmount().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                        calorie = calorie.add(food.getCalorie().multiply(ratio));
-                        protein = protein.add(food.getProtein().multiply(ratio));
-                        fat = fat.add(food.getFat().multiply(ratio));
-                        carb = carb.add(food.getCarbohydrate().multiply(ratio));
-                        if (food.getSugar() != null) sugar = sugar.add(food.getSugar().multiply(ratio));
-                        if (food.getSodium() != null) sodium = sodium.add(food.getSodium().multiply(ratio));
-                    }
-                }
-            }
+        // 直接从 diet_record 表 SUM 当日营养快照
+        BigDecimal[] sums = dietRecordRepository.sumNutrition(userId, date);
+        BigDecimal calorie = sums[0], protein = sums[1], fat = sums[2],
+                     carb = sums[3], sugar = sums[4], sodium = sums[5];
 
-            vo.setCalorieTotal(calorie.setScale(2, RoundingMode.HALF_UP));
-            vo.setProteinTotal(protein.setScale(2, RoundingMode.HALF_UP));
-            vo.setFatTotal(fat.setScale(2, RoundingMode.HALF_UP));
-            vo.setCarbohydrateTotal(carb.setScale(2, RoundingMode.HALF_UP));
-            vo.setSugarTotal(sugar.setScale(2, RoundingMode.HALF_UP));
-            vo.setSodiumTotal(sodium.setScale(2, RoundingMode.HALF_UP));
-        }
+        vo.setCalorieTotal(calorie.setScale(2, RoundingMode.HALF_UP));
+        vo.setProteinTotal(protein.setScale(2, RoundingMode.HALF_UP));
+        vo.setFatTotal(fat.setScale(2, RoundingMode.HALF_UP));
+        vo.setCarbohydrateTotal(carb.setScale(2, RoundingMode.HALF_UP));
+        vo.setSugarTotal(sugar.setScale(2, RoundingMode.HALF_UP));
+        vo.setSodiumTotal(sodium.setScale(2, RoundingMode.HALF_UP));
 
         // Get goals from user profile
         userProfileRepository.findByUserId(userId).ifPresentOrElse(profile -> {

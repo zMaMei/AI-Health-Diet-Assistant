@@ -52,10 +52,60 @@ public class DietRecordService {
             throw new IllegalArgumentException("份量必须大于0");
         }
 
+        // 写入营养快照：优先使用 command 传入的 AI 分析值，否则从 food_item 库计算兜底
+        populateNutrition(record, command);
+
         dietRecordRepository.save(record);
-        log.info("饮食记录已保存: id={}, foodName={}, mealType={}",
-                record.getId(), record.getFoodName(), record.getMealType());
+        log.info("饮食记录已保存: id={}, foodName={}, mealType={}, calorie={}, protein={}",
+                record.getId(), record.getFoodName(), record.getMealType(),
+                record.getCalorie(), record.getProtein());
         return record.getId();
+    }
+
+    /** 写入营养快照：优先 AI 返回值，兜底查 food_item 计算 */
+    private void populateNutrition(DietRecord record, DietRecordCreateCommand command) {
+        // 优先使用 command 中传入的营养值（AI 返回）
+        if (command.getCalorie() != null) {
+            record.setCalorie(command.getCalorie());
+            record.setProtein(command.getProtein() != null ? command.getProtein() : BigDecimal.ZERO);
+            record.setFat(command.getFat() != null ? command.getFat() : BigDecimal.ZERO);
+            record.setCarbohydrate(command.getCarbohydrate() != null ? command.getCarbohydrate() : BigDecimal.ZERO);
+            record.setSugar(command.getSugar() != null ? command.getSugar() : BigDecimal.ZERO);
+            record.setSodium(command.getSodium() != null ? command.getSodium() : BigDecimal.ZERO);
+            return;
+        }
+
+        // 兜底：从 food_item 库按份量比例计算
+        if (record.getFoodId() != null) {
+            foodItemRepository.findById(record.getFoodId()).ifPresentOrElse(food -> {
+                BigDecimal ratio = record.getAmount()
+                        .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                record.setCalorie(food.getCalorie().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+                record.setProtein(food.getProtein().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+                record.setFat(food.getFat().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+                record.setCarbohydrate(food.getCarbohydrate().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+                record.setSugar((food.getSugar() != null ? food.getSugar() : BigDecimal.ZERO)
+                        .multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+                record.setSodium((food.getSodium() != null ? food.getSodium() : BigDecimal.ZERO)
+                        .multiply(ratio).setScale(2, RoundingMode.HALF_UP));
+            }, () -> {
+                log.warn("food_id={} 在 food_item 库中未找到，营养值留空", record.getFoodId());
+                setZeroNutrition(record);
+            });
+        } else {
+            // 无 food_id 且无 AI 营养值 → 留空
+            log.warn("饮食记录无 food_id 且无 AI 营养值: foodName={}", record.getFoodName());
+            setZeroNutrition(record);
+        }
+    }
+
+    private void setZeroNutrition(DietRecord record) {
+        record.setCalorie(BigDecimal.ZERO);
+        record.setProtein(BigDecimal.ZERO);
+        record.setFat(BigDecimal.ZERO);
+        record.setCarbohydrate(BigDecimal.ZERO);
+        record.setSugar(BigDecimal.ZERO);
+        record.setSodium(BigDecimal.ZERO);
     }
 
     public List<DietRecordVO> list(Long userId, LocalDate date) {
@@ -109,17 +159,14 @@ public class DietRecordService {
         vo.setImageUrl(record.getImageUrl());
         vo.setRecordTime(record.getRecordTime());
 
-        // Calculate nutrition if food item exists
-        if (record.getFoodId() != null) {
-            foodItemRepository.findById(record.getFoodId()).ifPresent(food -> {
-                BigDecimal ratio = record.getAmount()
-                        .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                vo.setCalorie(food.getCalorie().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
-                vo.setProtein(food.getProtein().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
-                vo.setFat(food.getFat().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
-                vo.setCarbohydrate(food.getCarbohydrate().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
-            });
-        }
+        // 直接从 entity 读取营养快照（写入时已计算好）
+        vo.setCalorie(record.getCalorie());
+        vo.setProtein(record.getProtein());
+        vo.setFat(record.getFat());
+        vo.setCarbohydrate(record.getCarbohydrate());
+        vo.setSugar(record.getSugar());
+        vo.setSodium(record.getSodium());
+
         return vo;
     }
 }

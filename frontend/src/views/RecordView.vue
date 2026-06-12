@@ -25,9 +25,10 @@
       </div>
     </div>
 
-    <!-- Today's summary -->
-    <div class="card" v-if="todayNutrition">
-      <div class="summary-row">
+    <!-- Today's nutrition summary -->
+    <div class="card summary-card" v-if="todayNutrition">
+      <h3 class="card-title">📊 今日摄入总览</h3>
+      <div class="summary-grid">
         <div class="summary-item">
           <span class="summary-value">{{ todayNutrition.calorieTotal }}</span>
           <span class="summary-label">热量(kcal)</span>
@@ -44,25 +45,69 @@
           <span class="summary-value">{{ todayNutrition.carbohydrateTotal }}</span>
           <span class="summary-label">碳水(g)</span>
         </div>
+        <div class="summary-item">
+          <span class="summary-value">{{ todayNutrition.sugarTotal }}</span>
+          <span class="summary-label">糖(g)</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">{{ todayNutrition.sodiumTotal }}</span>
+          <span class="summary-label">钠(mg)</span>
+        </div>
       </div>
     </div>
 
-    <!-- Today's records group by meal -->
+    <!-- Meal accordion list -->
     <template v-for="meal in mealTypes" :key="meal.key">
-      <div v-if="groupedRecords[meal.key]?.length">
-        <h3 class="section-title">{{ meal.label }}</h3>
-        <div class="card record-card" v-for="rec in groupedRecords[meal.key]" :key="rec.id">
-          <div class="record-header">
-            <strong>{{ rec.foodName }}</strong>
-            <span class="record-source">{{ sourceLabels[rec.source] || rec.source }}</span>
+      <div class="meal-card card" v-if="groupedRecords[meal.key]?.length" :class="{ expanded: expandedMeals[meal.key] }">
+        <!-- Collapsed header: click to toggle -->
+        <div class="meal-header" @click="toggleMeal(meal.key)">
+          <div class="meal-header-left">
+            <span class="meal-icon">{{ meal.icon }}</span>
+            <span class="meal-name">{{ meal.label }}</span>
+            <span class="meal-count">{{ groupedRecords[meal.key].length }}种食物</span>
           </div>
-          <div class="record-detail">
-            <span>份量: {{ rec.amount }}{{ rec.unit || '' }}</span>
-            <span v-if="rec.calorie">热量: {{ rec.calorie }} kcal</span>
+          <div class="meal-header-right">
+            <span class="meal-summary">🔥{{ mealTotals[meal.key]?.calorie || 0 }}</span>
+            <span class="meal-summary-sub">🥩{{ mealTotals[meal.key]?.protein || 0 }}g</span>
+            <span class="meal-arrow">{{ expandedMeals[meal.key] ? '▴' : '▾' }}</span>
           </div>
-          <div class="record-actions">
-            <button class="btn btn-sm btn-outline" @click="editRecord(rec)">编辑</button>
-            <button class="btn btn-sm btn-danger" @click="deleteRecord(rec.id)">删除</button>
+        </div>
+
+        <!-- Expanded body -->
+        <div class="meal-body" v-show="expandedMeals[meal.key]">
+          <!-- Photo carousel -->
+          <div class="photo-carousel" v-if="mealPhotos[meal.key]?.length">
+            <div class="photo-track" ref="photoTrack">
+              <div class="photo-thumb" v-for="(photo, pi) in mealPhotos[meal.key]" :key="pi"
+                   @click="openPhotoPreview(photo.imageUrl || photo)">
+                <img :src="photoFullUrl(photo.imageUrl || photo)" alt="食物照片" loading="lazy">
+              </div>
+            </div>
+          </div>
+
+          <div class="meal-divider"></div>
+
+          <!-- Food items -->
+          <div class="food-item" v-for="rec in groupedRecords[meal.key]" :key="rec.id">
+            <div class="food-main">
+              <div class="food-name-row">
+                <strong>{{ rec.foodName }}</strong>
+                <span class="food-amount">{{ rec.amount }}{{ rec.unit || '' }}</span>
+                <span class="food-source">{{ sourceLabels[rec.source] || rec.source }}</span>
+              </div>
+              <div class="food-nutrition">
+                <span>🔥{{ rec.calorie || 0 }}kcal</span>
+                <span>🥩{{ rec.protein || 0 }}g</span>
+                <span>🧈{{ rec.fat || 0 }}g</span>
+                <span>🌾{{ rec.carbohydrate || 0 }}g</span>
+                <span>🍬{{ rec.sugar || 0 }}g</span>
+                <span>🧂{{ rec.sodium || 0 }}mg</span>
+              </div>
+            </div>
+            <div class="food-actions">
+              <button class="btn btn-sm btn-outline" @click.stop="editRecord(rec)">编辑</button>
+              <button class="btn btn-sm btn-danger" @click.stop="deleteRecord(rec.id)">删除</button>
+            </div>
           </div>
         </div>
       </div>
@@ -74,16 +119,19 @@
       <p style="font-size:12px;color:#bbb;margin-top:4px">点击上方按钮开始记录</p>
     </div>
 
+    <!-- ==================== Photo Preview Lightbox ==================== -->
+    <div class="lightbox-overlay" v-if="previewPhoto" @click="closePhotoPreview">
+      <img :src="previewPhoto" alt="食物照片大图" class="lightbox-img" @click.stop>
+    </div>
+
     <!-- ==================== Photo Recognition Modal ==================== -->
     <div class="modal-overlay" v-if="showPhotoModal" @click.self="!photoSaving && closePhotoModal()">
       <div class="modal-content">
         <h3>📷 拍照识别食物</h3>
 
-        <!-- Hidden file input -->
         <input type="file" ref="photoInputRef" accept="image/*" capture="environment"
                style="display:none" @change="onPhotoFileSelected">
 
-        <!-- File selection area -->
         <div class="mock-camera" @click="triggerPhotoFileInput" v-if="!photoFile && !photoAnalyzed">
           <span>📸 点击拍照或选择图片</span>
         </div>
@@ -92,10 +140,8 @@
           <span class="file-name">{{ photoFile.name }}</span>
         </div>
 
-        <!-- Loading -->
         <div v-if="photoLoading" class="loading" style="padding:20px">🤖 AI 智能分析中，请稍候...</div>
 
-        <!-- Analysis results — multi-select candidates with individual amounts -->
         <div v-if="photoAnalyzed && photoCandidates?.length">
           <p style="font-size:13px;color:#666;margin-bottom:8px">
             识别到 {{ photoCandidates.length }} 种食物，请勾选要保存的食物：
@@ -116,6 +162,8 @@
               <span>🥩{{ c.nutritionPreview.protein }}g</span>
               <span>🧈{{ c.nutritionPreview.fat }}g</span>
               <span>🌾{{ c.nutritionPreview.carbohydrate }}g</span>
+              <span v-if="c.nutritionPreview.sugar != null">🍬{{ c.nutritionPreview.sugar }}g</span>
+              <span v-if="c.nutritionPreview.sodium != null">🧂{{ c.nutritionPreview.sodium }}mg</span>
             </div>
             <div class="amount-row" v-if="c._checked">
               <label>份量：</label>
@@ -124,14 +172,14 @@
             </div>
           </div>
 
-          <!-- Meal type + batch save -->
           <div class="modal-actions" style="margin-top:12px">
             <label style="font-size:13px;color:#666">统一餐次：</label>
             <select v-model="selectedMeal">
               <option value="早餐">早餐</option>
               <option value="午餐">午餐</option>
               <option value="晚餐">晚餐</option>
-              <option value="加餐">加餐</option>
+              <option value="夜宵">夜宵</option>
+              <option value="其他">其他</option>
             </select>
             <button class="btn btn-primary save-all-btn"
                     :disabled="photoSaving || checkedCount === 0"
@@ -141,13 +189,11 @@
           </div>
         </div>
 
-        <!-- Error -->
         <div v-if="photoError" class="error-msg">
           <p>❌ {{ photoError }}</p>
           <button class="btn btn-sm btn-outline" @click="retryPhoto" style="margin-top:8px">重新拍照</button>
         </div>
 
-        <!-- Bottom buttons: 智能分析 + 取消 -->
         <div class="modal-bottom-bar" v-if="!photoAnalyzed">
           <button class="btn btn-sm analyze-btn"
                   :class="{ ready: photoFile && !photoLoading }"
@@ -191,7 +237,8 @@
               <option value="早餐">早餐</option>
               <option value="午餐">午餐</option>
               <option value="晚餐">晚餐</option>
-              <option value="加餐">加餐</option>
+              <option value="夜宵">夜宵</option>
+              <option value="其他">其他</option>
             </select>
           </div>
           <button class="btn btn-primary" @click="saveFromVoice" style="margin-top:12px"
@@ -236,7 +283,8 @@
             <option value="早餐">早餐</option>
             <option value="午餐">午餐</option>
             <option value="晚餐">晚餐</option>
-            <option value="加餐">加餐</option>
+            <option value="夜宵">夜宵</option>
+            <option value="其他">其他</option>
           </select>
         </div>
         <div class="form-group">
@@ -297,7 +345,8 @@
             <option value="早餐">早餐</option>
             <option value="午餐">午餐</option>
             <option value="晚餐">晚餐</option>
-            <option value="加餐">加餐</option>
+            <option value="夜宵">夜宵</option>
+            <option value="其他">其他</option>
           </select>
         </div>
         <div class="form-group">
@@ -312,13 +361,75 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../api/index.js'
 
 const today = new Date().toISOString().split('T')[0]
 const records = ref([])
 const todayNutrition = ref(null)
 const alerts = ref([])
+
+// Accordion state: which meals are expanded
+const expandedMeals = reactive({
+  '早餐': true,
+  '午餐': true,
+  '晚餐': false,
+  '夜宵': false,
+  '其他': false,
+})
+
+function toggleMeal(key) {
+  expandedMeals[key] = !expandedMeals[key]
+}
+
+// Photo preview lightbox
+const previewPhoto = ref(null)
+
+function photoFullUrl(relativePath) {
+  if (!relativePath) return ''
+  return '/api/uploads' + relativePath
+}
+
+function openPhotoPreview(url) { previewPhoto.value = photoFullUrl(url) }
+function closePhotoPreview() { previewPhoto.value = null }
+
+const mealTypes = [
+  { key: '早餐', label: '早餐', icon: '🍳' },
+  { key: '午餐', label: '午餐', icon: '🍚' },
+  { key: '晚餐', label: '晚餐', icon: '🍜' },
+  { key: '夜宵', label: '夜宵', icon: '🌙' },
+  { key: '其他', label: '其他', icon: '🍽️' },
+]
+
+const sourceLabels = { photo: '拍照', voice: '语音', manual: '手动' }
+
+const groupedRecords = computed(() => {
+  const groups = {}
+  mealTypes.forEach(m => { groups[m.key] = [] })
+  records.value.forEach(r => {
+    if (groups[r.mealType] !== undefined) groups[r.mealType].push(r)
+    else if (groups['其他']) groups['其他'].push(r)
+  })
+  return groups
+})
+
+// Meal-level nutrition totals
+const mealTotals = computed(() => {
+  const totals = {}
+  mealTypes.forEach(m => {
+    const items = groupedRecords.value[m.key]
+    if (items?.length) {
+      totals[m.key] = {
+        calorie: items.reduce((s, r) => s + (Number(r.calorie) || 0), 0).toFixed(0),
+        protein: items.reduce((s, r) => s + (Number(r.protein) || 0), 0).toFixed(1),
+      }
+    }
+  })
+  return totals
+})
+
+// Meal photos loaded from backend API
+const mealPhotos = ref({})
 
 // ==================== Photo Modal State ====================
 const showPhotoModal = ref(false)
@@ -330,6 +441,7 @@ const photoCandidates = ref([])
 const photoError = ref(null)
 const photoSaving = ref(false)
 const selectedMeal = ref('午餐')
+const photoAnalyzedResultImageUrl = ref(null)   // 识别返回的 imageUrl
 
 // ==================== Voice Modal State ====================
 const showVoiceModal = ref(false)
@@ -353,24 +465,6 @@ const manualSaving = ref(false)
 const showEditModal = ref(false)
 const editForm = ref({ id: null, foodName: '', mealType: '午餐', amount: 1 })
 
-const mealTypes = [
-  { key: '早餐', label: '🍳 早餐' },
-  { key: '午餐', label: '🍚 午餐' },
-  { key: '晚餐', label: '🍜 晚餐' },
-  { key: '加餐', label: '🍪 加餐' },
-]
-
-const sourceLabels = { photo: '拍照', voice: '语音', manual: '手动' }
-
-const groupedRecords = computed(() => {
-  const groups = {}
-  mealTypes.forEach(m => { groups[m.key] = [] })
-  records.value.forEach(r => {
-    if (groups[r.mealType]) groups[r.mealType].push(r)
-  })
-  return groups
-})
-
 const checkedCount = computed(() =>
   photoCandidates.value.filter(c => c._checked).length
 )
@@ -378,12 +472,29 @@ const checkedCount = computed(() =>
 // ==================== Data Fetching ====================
 async function fetchData() {
   try {
-    const [recRes, nutRes] = await Promise.all([
+    const [recRes, nutRes, photoRes] = await Promise.all([
       api.getDietRecords(today),
-      api.getNutrition(today)
+      api.getNutrition(today),
+      api.getMealPhotos(today),
     ])
     records.value = recRes.data.data || []
     todayNutrition.value = nutRes.data.data
+
+    // Group photos by meal type
+    const photos = {}
+    const photoList = photoRes.data.data || []
+    photoList.forEach(p => {
+      if (!photos[p.mealType]) photos[p.mealType] = []
+      photos[p.mealType].push(p)
+    })
+    mealPhotos.value = photos
+
+    // Auto-expand meals that have records
+    mealTypes.forEach(m => {
+      if (groupedRecords.value[m.key]?.length) {
+        expandedMeals[m.key] = true
+      }
+    })
   } catch (e) {
     console.error('获取数据失败', e)
   }
@@ -412,6 +523,7 @@ function openPhotoModal() {
   photoError.value = null
   photoLoading.value = false
   photoSaving.value = false
+  photoAnalyzedResultImageUrl.value = null
 }
 
 function closePhotoModal() {
@@ -423,11 +535,10 @@ function closePhotoModal() {
   photoError.value = null
   photoLoading.value = false
   photoSaving.value = false
+  photoAnalyzedResultImageUrl.value = null
 }
 
-function triggerPhotoFileInput() {
-  photoInputRef.value?.click()
-}
+function triggerPhotoFileInput() { photoInputRef.value?.click() }
 
 function onPhotoFileSelected(e) {
   const file = e.target.files?.[0]
@@ -449,12 +560,13 @@ async function startPhotoAnalyze() {
     const res = await api.recognizeFood(formData)
     const data = res.data.data
     if (data?.candidates?.length) {
-      // Convert to reactive candidates with _checked and _amount
       photoCandidates.value = data.candidates.map(c => ({
         ...c,
-        _checked: true,       // default: all checked
+        _checked: true,
         _amount: c.defaultAmount || 1,
       }))
+      // 保存后端返回的照片路径
+      photoAnalyzedResultImageUrl.value = data.imageUrl || null
       photoAnalyzed.value = true
     } else {
       photoError.value = '未能识别到食物，请重试或改用手动添加'
@@ -480,8 +592,7 @@ async function saveFromPhoto() {
   if (!checked.length) return
 
   photoSaving.value = true
-  let saved = 0
-  let failed = 0
+  let saved = 0, failed = 0
 
   for (const c of checked) {
     try {
@@ -490,6 +601,13 @@ async function saveFromPhoto() {
         mealType: selectedMeal.value,
         amount: c._amount || 1,
         source: 'photo',
+        // 传入 AI 返回的营养数据
+        calorie: c.nutritionPreview?.calorie,
+        protein: c.nutritionPreview?.protein,
+        fat: c.nutritionPreview?.fat,
+        carbohydrate: c.nutritionPreview?.carbohydrate,
+        sugar: c.nutritionPreview?.sugar,
+        sodium: c.nutritionPreview?.sodium,
       })
       saved++
     } catch (e) {
@@ -498,12 +616,23 @@ async function saveFromPhoto() {
     }
   }
 
-  photoSaving.value = false
-
-  if (failed > 0) {
-    alert(`保存完成：${saved} 种成功，${failed} 种失败`)
+  // ② 保存照片记录到 meal_photo 表
+  const imageUrl = photoCandidates.value[0]?.imageUrl || photoAnalyzedResultImageUrl.value
+  if (imageUrl) {
+    try {
+      await api.saveMealPhoto({
+        recordDate: today,
+        mealType: selectedMeal.value,
+        imageUrl: imageUrl,
+      })
+      console.log('照片记录已保存:', imageUrl)
+    } catch (e) {
+      console.error('保存照片记录失败', e)
+    }
   }
 
+  photoSaving.value = false
+  if (failed > 0) alert(`保存完成：${saved} 种成功，${failed} 种失败`)
   closePhotoModal()
   await fetchData()
   await checkWarnings()
@@ -531,9 +660,7 @@ function closeVoiceModal() {
   voiceSaving.value = false
 }
 
-function triggerVoiceFileInput() {
-  voiceInputRef.value?.click()
-}
+function triggerVoiceFileInput() { voiceInputRef.value?.click() }
 
 function onVoiceFileSelected(e) {
   const file = e.target.files?.[0]
@@ -578,15 +705,33 @@ function retryVoice() {
 
 async function saveFromVoice() {
   voiceSaving.value = true
-  let saved = 0, failed = 0;
+  let saved = 0, failed = 0
 
   for (const entity of voiceResult.value.foodEntities) {
     try {
+      // 语音识别的食物先尝试查库获取营养
+      let nutrition = {}
+      try {
+        const analysisRes = await api.analyzeFoodText(entity.foodName)
+        if (analysisRes.data.data) {
+          const n = analysisRes.data.data
+          nutrition = {
+            calorie: n.calorie,
+            protein: n.protein,
+            fat: n.fat,
+            carbohydrate: n.carbohydrate,
+            sugar: n.sugar,
+            sodium: n.sodium,
+          }
+        }
+      } catch (e) { /* 查库失败不阻塞保存 */ }
+
       await api.createDietRecord({
         foodName: entity.foodName,
         mealType: entity.mealType || '午餐',
         amount: entity.amount,
         source: 'voice',
+        ...nutrition,
       })
       saved++
     } catch (e) {
@@ -597,7 +742,6 @@ async function saveFromVoice() {
 
   voiceSaving.value = false
   if (failed > 0) alert(`保存完成：${saved} 种成功，${failed} 种失败`)
-
   closeVoiceModal()
   await fetchData()
   await checkWarnings()
@@ -652,12 +796,22 @@ function hasSugarOrSodium(r) {
 async function saveManual() {
   manualSaving.value = true
   try {
-    await api.createDietRecord({
+    const payload = {
       foodName: manualForm.value.foodName,
       mealType: manualForm.value.mealType,
       amount: manualForm.value.amount,
       source: 'manual',
-    })
+    }
+    // 传入 AI 分析出的营养数据
+    if (manualAnalysisResult.value) {
+      payload.calorie = manualAnalysisResult.value.calorie
+      payload.protein = manualAnalysisResult.value.protein
+      payload.fat = manualAnalysisResult.value.fat
+      payload.carbohydrate = manualAnalysisResult.value.carbohydrate
+      payload.sugar = manualAnalysisResult.value.sugar
+      payload.sodium = manualAnalysisResult.value.sodium
+    }
+    await api.createDietRecord(payload)
     closeManualModal()
     await fetchData()
     await checkWarnings()
@@ -741,45 +895,175 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 
-.summary-row {
-  display: flex;
-  justify-content: space-around;
+/* ==================== Summary Card ==================== */
+.summary-card { margin-bottom: 12px; }
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   text-align: center;
 }
-.summary-item { display: flex; flex-direction: column; }
-.summary-value { font-size: 20px; font-weight: 700; color: #4CAF50; }
+.summary-item { display: flex; flex-direction: column; padding: 4px 0; }
+.summary-value { font-size: 18px; font-weight: 700; color: #4CAF50; }
 .summary-label { font-size: 11px; color: #999; margin-top: 2px; }
 
-.record-card {
+/* ==================== Meal Accordion ==================== */
+.meal-card {
+  padding: 0 !important;
+  overflow: hidden;
+  margin-bottom: 10px;
   border-left: 3px solid #4CAF50;
+  transition: all 0.2s;
 }
-.record-header {
+.meal-card.expanded {
+  border-left-color: #388E3C;
+}
+
+.meal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.meal-header:active { background: #F5F5F5; }
+
+.meal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meal-icon { font-size: 20px; }
+.meal-name { font-size: 15px; font-weight: 600; }
+.meal-count {
+  font-size: 12px;
+  color: #999;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.meal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meal-summary { font-size: 16px; font-weight: 700; color: #E65100; }
+.meal-summary-sub { font-size: 12px; color: #999; }
+.meal-arrow { font-size: 14px; color: #bbb; }
+
+.meal-body {
+  padding: 0 16px 12px 16px;
+}
+
+/* ==================== Photo Carousel ==================== */
+.photo-carousel {
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.photo-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0;
+}
+.photo-track::-webkit-scrollbar { height: 4px; }
+.photo-track::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+.photo-thumb {
+  flex-shrink: 0;
+  width: 120px;
+  height: 100px;
+  border-radius: 10px;
+  overflow: hidden;
+  scroll-snap-align: start;
+  cursor: pointer;
+  border: 2px solid #eee;
+  transition: border-color 0.2s;
+}
+.photo-thumb:hover { border-color: #4CAF50; }
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meal-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin-bottom: 8px;
+}
+
+/* ==================== Food Item ==================== */
+.food-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: #FAFAFA;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.food-main { flex: 1; min-width: 0; }
+.food-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   margin-bottom: 4px;
 }
-.record-source {
+.food-name-row strong { font-size: 14px; }
+.food-amount {
+  font-size: 12px;
+  color: #666;
+  background: #E8F5E9;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.food-source {
   font-size: 11px;
   color: #999;
   background: #f0f0f0;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 4px;
 }
-.record-detail {
-  font-size: 13px;
-  color: #666;
+.food-nutrition {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: #888;
 }
-.record-actions {
+.food-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
-/* ==================== Modal ==================== */
+/* ==================== Lightbox ==================== */
+.lightbox-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.lightbox-img {
+  max-width: 92%;
+  max-height: 85vh;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+/* ==================== Modal Styles (preserved) ==================== */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -812,6 +1096,7 @@ onMounted(async () => {
   transition: border-color 0.2s, background 0.2s;
 }
 .mock-camera:hover { border-color: #4CAF50; background: #F1F8E9; }
+
 .file-selected {
   display: flex;
   align-items: center;
@@ -824,13 +1109,8 @@ onMounted(async () => {
   color: #2E7D32;
 }
 .file-icon { font-size: 24px; }
-.file-name {
-  font-size: 13px;
-  font-weight: 500;
-  word-break: break-all;
-}
+.file-name { font-size: 13px; font-weight: 500; word-break: break-all; }
 
-/* Candidate check items */
 .candidate-check-item {
   padding: 10px 12px;
   border: 2px solid #eee;
@@ -838,28 +1118,15 @@ onMounted(async () => {
   margin-bottom: 8px;
   transition: border-color 0.2s;
 }
-.candidate-check-item.checked {
-  border-color: #4CAF50;
-  background: #F1F8E9;
-}
-.check-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-.check-box {
-  width: 18px;
-  height: 18px;
-  accent-color: #4CAF50;
-  cursor: pointer;
-  flex-shrink: 0;
-}
+.candidate-check-item.checked { border-color: #4CAF50; background: #F1F8E9; }
+.check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check-box { width: 18px; height: 18px; accent-color: #4CAF50; cursor: pointer; flex-shrink: 0; }
 .candidate-name { font-weight: 600; flex: 1; }
 .candidate-confidence { font-size: 12px; }
 .candidate-nutrition {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 11px;
   color: #999;
   margin-top: 6px;
@@ -874,47 +1141,16 @@ onMounted(async () => {
   font-size: 13px;
   color: #666;
 }
-.amount-input {
-  width: 70px;
-  padding: 4px 6px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 13px;
-  text-align: center;
-}
+.amount-input { width: 70px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; text-align: center; }
 .amount-unit { font-size: 12px; color: #999; }
 .save-all-btn { width: 100%; }
 
-.analysis-preview {
-  background: #F1F8E9;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-.preview-nutrition {
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: #2E7D32;
-  margin-top: 4px;
-}
-.preview-meta {
-  display: flex;
-  gap: 10px;
-  font-size: 11px;
-  color: #666;
-  margin-top: 4px;
-}
+.analysis-preview { background: #F1F8E9; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.preview-nutrition { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #2E7D32; margin-top: 4px; }
+.preview-meta { display: flex; gap: 10px; font-size: 11px; color: #666; margin-top: 4px; }
 
-.error-msg {
-  text-align: center;
-  padding: 12px;
-  color: #f44336;
-  font-size: 14px;
-  margin-bottom: 8px;
-}
+.error-msg { text-align: center; padding: 12px; color: #f44336; font-size: 14px; margin-bottom: 8px; }
 
-/* ==================== Bottom bar ==================== */
 .modal-bottom-bar {
   display: flex;
   justify-content: flex-end;
@@ -936,45 +1172,19 @@ onMounted(async () => {
   background: #e0e0e0;
   color: #999;
 }
-.analyze-btn:disabled {
-  cursor: not-allowed;
-  background: #e0e0e0;
-  color: #999;
-}
+.analyze-btn:disabled { cursor: not-allowed; background: #e0e0e0; color: #999; }
 .analyze-btn.ready {
   background: linear-gradient(135deg, #4CAF50, #2E7D32);
   color: #fff;
   cursor: pointer;
 }
-.analyze-btn.ready:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(76,175,80,0.3);
-}
+.analyze-btn.ready:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(76,175,80,0.3); }
 
 .cancel-btn { padding: 8px 20px; }
-
 .form-group { margin-bottom: 12px; }
-.form-group label {
-  display: block;
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
-.modal-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.modal-content select, .modal-content input {
-  margin-bottom: 8px;
-}
-
+.form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+.modal-actions { display: flex; flex-direction: column; gap: 8px; }
+.modal-content select, .modal-content input { margin-bottom: 8px; }
 .voice-result { margin-top: 12px; }
-.entity-row {
-  display: flex;
-  gap: 8px;
-  margin: 8px 0;
-}
+.entity-row { display: flex; gap: 8px; margin: 8px 0; }
 </style>

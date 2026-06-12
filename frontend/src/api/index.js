@@ -14,6 +14,7 @@ export default {
     return api.get('/diet-records', { params: { userId: USER_ID, date } })
   },
   createDietRecord(data) {
+    // 带上 AI 返回的营养值（calorie/protein/fat/carbohydrate/sugar/sodium），后端优先使用
     return api.post('/diet-records', { userId: USER_ID, ...data })
   },
   updateDietRecord(id, data) {
@@ -74,6 +75,19 @@ export default {
   },
   checkAlerts(date) {
     return api.get('/alert-rules/check', { params: { userId: USER_ID, date } })
+  },
+
+  // Meal photos
+  getMealPhotos(date, mealType) {
+    const params = { userId: USER_ID, date }
+    if (mealType) params.mealType = mealType
+    return api.get('/meal-photos', { params })
+  },
+  saveMealPhoto(data) {
+    return api.post('/meal-photos', { userId: USER_ID, ...data })
+  },
+  deleteMealPhoto(id) {
+    return api.delete(`/meal-photos/${id}`)
   },
 
   // User profile

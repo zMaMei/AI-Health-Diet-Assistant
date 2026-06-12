@@ -26,7 +26,8 @@ public class FoodRecognitionController {
 
     /**
      * POST /api/food/recognize
-     * Upload an image and get AI-recognized food candidates with nutrition estimates.
+     * Upload an image, save it to disk, and get AI-recognized food candidates.
+     * Returns imageUrl so the frontend can later associate the photo with the meal.
      */
     @PostMapping("/recognize")
     public ApiResponse<FoodRecognizeResultVO> recognize(@RequestParam("image") MultipartFile file) {
@@ -39,8 +40,16 @@ public class FoodRecognitionController {
                     file.getOriginalFilename(), file.getSize(), file.getContentType());
 
             byte[] imageBytes = file.getBytes();
+
+            // ① 先保存照片到磁盘
+            String imageUrl = foodRecognitionService.saveImage(imageBytes);
+
+            // ② AI 识别
             FoodRecognizeResultVO result = foodRecognitionService.recognizeImage(
                     imageBytes, file.getContentType());
+
+            // ③ 把 imageUrl 带回前端
+            result.setImageUrl(imageUrl);
 
             return ApiResponse.success(result);
 

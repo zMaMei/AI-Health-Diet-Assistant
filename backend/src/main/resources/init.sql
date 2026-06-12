@@ -68,23 +68,29 @@ CREATE TABLE `food_item` (
 -- ============================================================
 DROP TABLE IF EXISTS `diet_record`;
 CREATE TABLE `diet_record` (
-    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '饮食记录主键',
-    `user_id`     BIGINT       NOT NULL                COMMENT '所属用户',
-    `food_id`     BIGINT       DEFAULT NULL            COMMENT '匹配到的标准食物',
-    `food_name`   VARCHAR(64)  NOT NULL                COMMENT '最终确认的食物名称',
-    `meal_type`   VARCHAR(16)  NOT NULL                COMMENT '早餐/午餐/晚餐/加餐',
-    `amount`      DECIMAL(8,2) NOT NULL                COMMENT '份量',
-    `source`      VARCHAR(16)  NOT NULL                COMMENT 'photo / voice / manual',
-    `image_url`   VARCHAR(255) DEFAULT NULL            COMMENT '拍照识别图片地址或本地引用',
-    `record_time` DATETIME     NOT NULL                COMMENT '记录时间',
-    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '饮食记录主键',
+    `user_id`      BIGINT       NOT NULL                COMMENT '所属用户',
+    `food_id`      BIGINT       DEFAULT NULL            COMMENT '匹配到的标准食物',
+    `food_name`    VARCHAR(64)  NOT NULL                COMMENT '最终确认的食物名称',
+    `meal_type`    VARCHAR(16)  NOT NULL                COMMENT '早餐/午餐/晚餐/夜宵/其他',
+    `amount`       DECIMAL(8,2) NOT NULL                COMMENT '份量',
+    `source`       VARCHAR(16)  NOT NULL                COMMENT 'photo / voice / manual',
+    `image_url`    VARCHAR(255) DEFAULT NULL            COMMENT '拍照识别图片本地引用',
+    `calorie`      DECIMAL(8,2) DEFAULT 0.00            COMMENT '热量(kcal)',
+    `protein`      DECIMAL(8,2) DEFAULT 0.00            COMMENT '蛋白质(g)',
+    `fat`          DECIMAL(8,2) DEFAULT 0.00            COMMENT '脂肪(g)',
+    `carbohydrate` DECIMAL(8,2) DEFAULT 0.00            COMMENT '碳水(g)',
+    `sugar`        DECIMAL(8,2) DEFAULT 0.00            COMMENT '糖(g)',
+    `sodium`       DECIMAL(8,2) DEFAULT 0.00            COMMENT '钠(mg)',
+    `record_time`  DATETIME     NOT NULL                COMMENT '记录时间',
+    `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_record_time` (`record_time`),
     KEY `idx_user_record_time` (`user_id`, `record_time`),
     CONSTRAINT `fk_record_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_record_food` FOREIGN KEY (`food_id`) REFERENCES `food_item` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食记录表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食记录表（含营养快照）';
 
 -- ============================================================
 -- 5. nutrition_record 表（文档 8.2.5）
@@ -157,6 +163,23 @@ CREATE TABLE `alert_rule` (
     KEY `idx_user_id` (`user_id`),
     CONSTRAINT `fk_alert_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食预警规则表';
+
+-- ============================================================
+-- 9. meal_photo 表（餐次照片）
+-- ============================================================
+DROP TABLE IF EXISTS `meal_photo`;
+CREATE TABLE `meal_photo` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '照片主键',
+    `user_id`     BIGINT       NOT NULL                COMMENT '所属用户',
+    `record_date` DATE         NOT NULL                COMMENT '拍摄日期',
+    `meal_type`   VARCHAR(16)  NOT NULL                COMMENT '早餐/午餐/晚餐/夜宵/其他',
+    `image_url`   VARCHAR(255) NOT NULL                COMMENT '照片相对路径',
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_date` (`user_id`, `record_date`),
+    KEY `idx_user_date_meal` (`user_id`, `record_date`, `meal_type`),
+    CONSTRAINT `fk_meal_photo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='餐次照片表（一餐可有多张照片）';
 
 -- 重新启用外键检查
 SET FOREIGN_KEY_CHECKS = 1;
@@ -254,11 +277,11 @@ INSERT INTO `alert_rule` (`id`, `user_id`, `nutrient_type`, `threshold`, `enable
 (2, 1, 'sugar',    50.00, TRUE, NOW()),
 (3, 1, 'sodium',  2400.00, TRUE, NOW());
 
--- 演示饮食记录
-INSERT INTO `diet_record` (`id`, `user_id`, `food_id`, `food_name`, `meal_type`, `amount`, `source`, `record_time`, `created_at`) VALUES
-(1, 1, 1, '米饭',   '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(2, 1, 7, '鸡蛋',   '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(3, 1, 8, '牛奶',   '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(4, 1, 1, '米饭',   '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW()),
-(5, 1, 4, '鸡腿',   '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW()),
-(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW());
+-- 演示饮食记录（含营养快照）
+INSERT INTO `diet_record` (`id`, `user_id`, `food_id`, `food_name`, `meal_type`, `amount`, `source`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`, `record_time`, `created_at`) VALUES
+(1, 1, 1, '米饭',   '早餐', 1.00, 'manual', 116.00, 2.60,  0.30,  25.90, 0.10, 2.00,   '2026-06-12 08:30:00', NOW()),
+(2, 1, 7, '鸡蛋',   '早餐', 1.00, 'manual', 144.00, 13.30, 8.80,  2.80,  0.00, 131.00, '2026-06-12 08:30:00', NOW()),
+(3, 1, 8, '牛奶',   '早餐', 1.00, 'manual', 65.00,  3.00,  3.60,  4.80,  4.80, 40.00,  '2026-06-12 08:30:00', NOW()),
+(4, 1, 1, '米饭',   '午餐', 1.00, 'manual', 116.00, 2.60,  0.30,  25.90, 0.10, 2.00,   '2026-06-12 12:00:00', NOW()),
+(5, 1, 4, '鸡腿',   '午餐', 1.00, 'manual', 181.00, 20.20, 11.00, 0.00,  0.00, 80.00,  '2026-06-12 12:00:00', NOW()),
+(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', 25.00,  2.00,  1.00,  3.00,  1.00, 150.00, '2026-06-12 12:00:00', NOW());

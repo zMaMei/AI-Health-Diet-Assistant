@@ -2,11 +2,9 @@ package com.health.diet.service;
 
 import com.health.diet.dto.vo.HealthScoreVO;
 import com.health.diet.entity.DietRecord;
-import com.health.diet.entity.FoodItem;
 import com.health.diet.entity.NutritionRecord;
 import com.health.diet.entity.UserProfile;
 import com.health.diet.repository.DietRecordRepository;
-import com.health.diet.repository.FoodItemRepository;
 import com.health.diet.repository.NutritionRecordRepository;
 import com.health.diet.repository.UserProfileRepository;
 import org.springframework.stereotype.Service;
@@ -20,16 +18,13 @@ import java.util.*;
 public class HealthScoreService {
 
     private final DietRecordRepository dietRecordRepository;
-    private final FoodItemRepository foodItemRepository;
     private final NutritionRecordRepository nutritionRecordRepository;
     private final UserProfileRepository userProfileRepository;
 
     public HealthScoreService(DietRecordRepository dietRecordRepository,
-                              FoodItemRepository foodItemRepository,
                               NutritionRecordRepository nutritionRecordRepository,
                               UserProfileRepository userProfileRepository) {
         this.dietRecordRepository = dietRecordRepository;
-        this.foodItemRepository = foodItemRepository;
         this.nutritionRecordRepository = nutritionRecordRepository;
         this.userProfileRepository = userProfileRepository;
     }
@@ -51,7 +46,7 @@ public class HealthScoreService {
             vo.setStrengths(List.of());
             vo.setRisks(List.of());
         } else {
-            // Calculate nutrition totals
+            // 直接从 diet_record 营养快照汇总
             BigDecimal calorie = BigDecimal.ZERO;
             BigDecimal protein = BigDecimal.ZERO;
             BigDecimal fat = BigDecimal.ZERO;
@@ -60,18 +55,12 @@ public class HealthScoreService {
             BigDecimal sodium = BigDecimal.ZERO;
 
             for (DietRecord record : records) {
-                if (record.getFoodId() != null) {
-                    FoodItem food = foodItemRepository.findById(record.getFoodId()).orElse(null);
-                    if (food != null) {
-                        BigDecimal ratio = record.getAmount().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                        calorie = calorie.add(food.getCalorie().multiply(ratio));
-                        protein = protein.add(food.getProtein().multiply(ratio));
-                        fat = fat.add(food.getFat().multiply(ratio));
-                        carb = carb.add(food.getCarbohydrate().multiply(ratio));
-                        if (food.getSugar() != null) sugar = sugar.add(food.getSugar().multiply(ratio));
-                        if (food.getSodium() != null) sodium = sodium.add(food.getSodium().multiply(ratio));
-                    }
-                }
+                calorie = calorie.add(nvl(record.getCalorie()));
+                protein = protein.add(nvl(record.getProtein()));
+                fat = fat.add(nvl(record.getFat()));
+                carb = carb.add(nvl(record.getCarbohydrate()));
+                sugar = sugar.add(nvl(record.getSugar()));
+                sodium = sodium.add(nvl(record.getSodium()));
             }
 
             UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
@@ -181,5 +170,9 @@ public class HealthScoreService {
         }
 
         return score.max(BigDecimal.ZERO).min(new BigDecimal("100"));
+    }
+
+    private BigDecimal nvl(BigDecimal val) {
+        return val != null ? val : BigDecimal.ZERO;
     }
 }

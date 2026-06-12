@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,11 +23,14 @@ public class FoodRecognitionService {
 
     private final ImageRecognitionAdapter imageRecognitionAdapter;
     private final FoodItemRepository foodItemRepository;
+    private final MealPhotoService mealPhotoService;
 
     public FoodRecognitionService(ImageRecognitionAdapter imageRecognitionAdapter,
-                                   FoodItemRepository foodItemRepository) {
+                                   FoodItemRepository foodItemRepository,
+                                   MealPhotoService mealPhotoService) {
         this.imageRecognitionAdapter = imageRecognitionAdapter;
         this.foodItemRepository = foodItemRepository;
+        this.mealPhotoService = mealPhotoService;
     }
 
     /**
@@ -125,6 +129,13 @@ public class FoodRecognitionService {
                 nvl(label.sugar()),
                 nvl(label.sodium())
         );
+    }
+
+    /**
+     * 保存上传的图片到磁盘，返回相对路径。
+     */
+    public String saveImage(byte[] imageBytes) throws IOException {
+        return mealPhotoService.saveImageToDisk(imageBytes, "food");
     }
 
     private BigDecimal nvl(BigDecimal val) {

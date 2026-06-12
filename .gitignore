@@ -1,72 +1,17 @@
-# ====== 构建输出 ======
+# Uploads (user-generated food photos)
+backend/uploads/diet-images/**
+!backend/uploads/diet-images/.gitkeep
+
+# Build output
 backend/target/
 frontend/dist/
-frontend/dist-ssr/
-
-# ====== 依赖目录 ======
 frontend/node_modules/
 
-# ====== Claude AI 本地配置 ======
-.claude/
-
-# ====== IDE & 编辑器 ======
+# IDE
 .idea/
-.vscode/
 *.iml
-*.iws
-*.ipr
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
+.vscode/
 
-# ====== 操作系统 ======
+# OS
 .DS_Store
 Thumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# ====== 日志 ======
-logs/
-*.log
-*.log.*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# ====== 环境变量 & 本地配置 ======
-.env
-.env.local
-.env.*.local
-*.local
-
-# ====== 临时文件 ======
-*.tmp
-*.bak
-*.swp
-*~
-*.orig
-
-# ====== Java ======
-*.class
-*.jar
-*.war
-*.nar
-*.ear
-!backend/src/main/resources/**/*.jar
-
-# ====== 二进制文档 ======
-*.docx
-*.doc
-*.xlsx
-*.xls
-*.pptx
-*.ppt
-*.pdf
-
-# ====== 其他 ======
-*.zip
-*.tar.gz
-*.rar
