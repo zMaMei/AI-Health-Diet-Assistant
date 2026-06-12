@@ -620,20 +620,20 @@ input:checked + .slider:before { transform: translateX(20px); }
   background: rgba(0,0,0,0.4);
   z-index: 300;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 .modal-sheet {
-  width: 100%;
-  max-width: 480px;
+  width: calc(100% - 32px);
+  max-width: 400px;
   background: #fff;
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px;
   padding: 20px 16px 24px;
-  animation: slideUp 0.3s ease-out;
+  animation: modalFadeIn 0.25s ease-out;
 }
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
 }
 .modal-header {
   display: flex;
