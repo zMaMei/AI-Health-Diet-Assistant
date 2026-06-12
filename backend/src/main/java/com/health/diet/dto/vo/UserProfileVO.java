@@ -6,6 +6,8 @@ public class UserProfileVO {
 
     private Long id;
     private Long userId;
+    private String username;
+    private String avatarUrl;
     private String nickname;
     private Integer age;
     private BigDecimal heightCm;
@@ -19,6 +21,10 @@ public class UserProfileVO {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
     public Integer getAge() { return age; }
