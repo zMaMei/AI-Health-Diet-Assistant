@@ -1,4 +1,5 @@
 import axios from 'axios'
+import auth from '../auth.js'
 
 const api = axios.create({
   baseURL: '/api',
@@ -6,16 +7,35 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-const USER_ID = 1
+// 请求拦截器：自动带 token
+api.interceptors.request.use(config => {
+  if (auth.state.token) {
+    config.headers.Authorization = `Bearer ${auth.state.token}`
+  }
+  return config
+})
+
+// 响应拦截器：捕获 401
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      auth.logout()
+      if (window.location.pathname !== '/profile') {
+        alert('登录已过期，请前往"我的"页面重新登录')
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default {
-  // Diet records
+  // Diet records — userId 由后端从 token 解析
   getDietRecords(date) {
-    return api.get('/diet-records', { params: { userId: USER_ID, date } })
+    return api.get('/diet-records', { params: { date } })
   },
   createDietRecord(data) {
-    // 带上 AI 返回的营养值（calorie/protein/fat/carbohydrate/sugar/sodium），后端优先使用
-    return api.post('/diet-records', { userId: USER_ID, ...data })
+    return api.post('/diet-records', data)
   },
   updateDietRecord(id, data) {
     return api.put(`/diet-records/${id}`, data)
@@ -26,17 +46,17 @@ export default {
 
   // Nutrition
   getNutrition(date) {
-    return api.get('/nutrition/daily', { params: { userId: USER_ID, date } })
+    return api.get('/nutrition/daily', { params: { date } })
   },
 
   // Health score
   getHealthScore(date) {
-    return api.get('/health-score/daily', { params: { userId: USER_ID, date } })
+    return api.get('/health-score/daily', { params: { date } })
   },
 
   // Recommendations
   getRecommendations() {
-    return api.get('/recommendations/today', { params: { userId: USER_ID } })
+    return api.get('/recommendations/today')
   },
   submitFeedback(recommendationId, feedback) {
     return api.post('/recommendations/feedback', { recommendationId, feedback })
@@ -50,7 +70,7 @@ export default {
     })
   },
 
-  // Voice parse (with duration)
+  // Voice parse
   parseVoice(formData, durationSeconds) {
     const params = durationSeconds ? `?durationSeconds=${durationSeconds}` : ''
     return api.post('/voice/parse' + params, formData, {
@@ -61,7 +81,7 @@ export default {
 
   // Voice records
   getVoiceRecords(date) {
-    return api.get('/voice-records', { params: { userId: USER_ID, date } })
+    return api.get('/voice-records', { params: { date } })
   },
   deleteVoiceRecord(id) {
     return api.delete(`/voice-records/${id}`)
@@ -70,33 +90,33 @@ export default {
     return api.put(`/voice-records/${id}/meal-type`, { mealType })
   },
 
-  // Food text analysis (for manual add smart analysis)
+  // Food text analysis
   analyzeFoodText(foodName) {
     return api.post('/food/analyze-text', { foodName }, { timeout: 10000 })
   },
 
   // Alert rules
   getAlertRules() {
-    return api.get('/alert-rules', { params: { userId: USER_ID } })
+    return api.get('/alert-rules')
   },
   createAlertRule(data) {
-    return api.post('/alert-rules', { userId: USER_ID, ...data })
+    return api.post('/alert-rules', data)
   },
   updateAlertRule(ruleId, data) {
     return api.put(`/alert-rules/${ruleId}`, data)
   },
   checkAlerts(date) {
-    return api.get('/alert-rules/check', { params: { userId: USER_ID, date } })
+    return api.get('/alert-rules/check', { params: { date } })
   },
 
   // Meal photos
   getMealPhotos(date, mealType) {
-    const params = { userId: USER_ID, date }
+    const params = { date }
     if (mealType) params.mealType = mealType
     return api.get('/meal-photos', { params })
   },
   saveMealPhoto(data) {
-    return api.post('/meal-photos', { userId: USER_ID, ...data })
+    return api.post('/meal-photos', data)
   },
   deleteMealPhoto(id) {
     return api.delete(`/meal-photos/${id}`)
@@ -104,12 +124,9 @@ export default {
 
   // User profile
   getProfile() {
-    return api.get('/user-profile', { params: { userId: USER_ID } })
+    return api.get('/user-profile')
   },
   updateProfile(data) {
-    return api.put('/user-profile', data, { params: { userId: USER_ID } })
-  },
-  updateNickname(nickname) {
-    return api.put('/user-profile/nickname', { nickname }, { params: { userId: USER_ID } })
+    return api.put('/user-profile', data)
   },
 }
