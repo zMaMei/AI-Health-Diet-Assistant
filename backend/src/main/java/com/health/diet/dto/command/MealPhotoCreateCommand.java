@@ -6,7 +6,6 @@ import java.time.LocalDate;
 
 public class MealPhotoCreateCommand {
 
-    @NotNull
     private Long userId;
 
     @NotNull

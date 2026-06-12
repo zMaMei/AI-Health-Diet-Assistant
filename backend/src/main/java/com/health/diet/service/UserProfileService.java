@@ -14,9 +14,6 @@ public class UserProfileService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
 
-    // Default user ID for demo
-    public static final Long DEFAULT_USER_ID = 1L;
-
     public UserProfileService(UserRepository userRepository,
                                UserProfileRepository userProfileRepository) {
         this.userRepository = userRepository;
@@ -30,8 +27,10 @@ public class UserProfileService {
         UserProfileVO vo = new UserProfileVO();
         vo.setUserId(user.getId());
         vo.setNickname(user.getNickname());
+        vo.setUsername(user.getUsername());
 
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
+            vo.setAvatarUrl(profile.getAvatarUrl());
             vo.setId(profile.getId());
             vo.setAge(profile.getAge());
             vo.setHeightCm(profile.getHeightCm());

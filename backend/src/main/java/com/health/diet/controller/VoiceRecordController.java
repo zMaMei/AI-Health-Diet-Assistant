@@ -3,6 +3,7 @@ package com.health.diet.controller;
 import com.health.diet.common.ApiResponse;
 import com.health.diet.dto.vo.VoiceRecordVO;
 import com.health.diet.service.VoiceRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,8 +28,9 @@ public class VoiceRecordController {
     /** 查询某日所有语音记录 */
     @GetMapping
     public ApiResponse<List<VoiceRecordVO>> list(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         List<VoiceRecordVO> result = voiceRecordService.listByDate(userId, date);
         log.debug("GET /api/voice-records — userId={}, date={}, count={}",
                 userId, date, result.size());
