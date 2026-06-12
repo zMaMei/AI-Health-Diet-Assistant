@@ -33,7 +33,7 @@ public class AuthService {
     private final UserProfileRepository userProfileRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    private static final Path AVATAR_DIR = Paths.get(System.getProperty("user.dir"), "uploads", "avatars");
+    private static final Path AVATAR_DIR = Paths.get("uploads", "avatars");
 
     public AuthService(UserRepository userRepository,
                        UserProfileRepository userProfileRepository) {
@@ -138,7 +138,7 @@ public class AuthService {
         if (profile != null && profile.getAvatarUrl() != null) {
             try {
                 String oldPath = profile.getAvatarUrl().replace("/api/uploads/", "");
-                Files.deleteIfExists(Paths.get(System.getProperty("user.dir"), oldPath));
+                Files.deleteIfExists(Paths.get(oldPath));
             } catch (IOException e) {
                 log.warn("删除旧头像失败", e);
             }
@@ -146,7 +146,10 @@ public class AuthService {
 
         String filename = UUID.randomUUID().toString().replace("-", "") + ext;
         Path target = userDir.resolve(filename);
-        file.transferTo(target.toFile());
+        // 使用 Files.copy 而非 file.transferTo，避免 Tomcat ApplicationPart.write 路径解析不一致
+        try (java.io.InputStream in = file.getInputStream()) {
+            Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
 
         // 更新数据库
         String avatarUrl = "/api/uploads/avatars/" + userId + "/" + filename;
