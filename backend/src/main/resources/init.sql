@@ -18,11 +18,14 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================================
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
-    `id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键',
-    `nickname`   VARCHAR(32)  NOT NULL                COMMENT '展示昵称，用于本地化个性配置',
-    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近更新时间',
-    PRIMARY KEY (`id`)
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键',
+    `nickname`      VARCHAR(32)  NOT NULL                COMMENT '展示昵称',
+    `username`      VARCHAR(32)  NOT NULL                COMMENT '登录用户名',
+    `password_hash` VARCHAR(128) NOT NULL                COMMENT 'BCrypt 密码哈希',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- ============================================================
@@ -39,6 +42,7 @@ CREATE TABLE `user_profile` (
     `taboo`            VARCHAR(255) DEFAULT NULL            COMMENT '忌口标签列表',
     `taste_preference` VARCHAR(255) DEFAULT NULL            COMMENT '口味偏好标签',
     `warning_profile`  VARCHAR(255) DEFAULT NULL            COMMENT '慢性病或特殊饮食标签',
+    `avatar_url`       VARCHAR(255) DEFAULT NULL            COMMENT '头像本地路径',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_id` (`user_id`),
     CONSTRAINT `fk_profile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -208,12 +212,12 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 
 -- 演示用户
-INSERT INTO `users` (`id`, `nickname`, `created_at`, `updated_at`)
-VALUES (1, '健康达人', NOW(), NOW());
+INSERT INTO `users` (`id`, `nickname`, `username`, `password_hash`, `created_at`, `updated_at`)
+VALUES (1, '健康达人', 'demo', '$2b$10$i65WrNmS.MN/ScfII8xA0eKGA72Lg8KnfABjKaaK/hVLUm2UkyYGi', NOW(), NOW());
 
 -- 用户健康档案
-INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`)
-VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无');
+INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`, `avatar_url`)
+VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', NULL);
 
 -- 标准食物营养基线（每单位）
 INSERT INTO `food_item` (`id`, `name`, `category`, `unit`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`) VALUES

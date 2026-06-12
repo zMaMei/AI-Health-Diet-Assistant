@@ -1,9 +1,10 @@
--- Default demo user
-INSERT INTO users (id, nickname, created_at, updated_at) VALUES (1, '健康达人', NOW(), NOW());
+-- Default demo user (password: demo123)
+INSERT INTO users (id, nickname, username, password_hash, created_at, updated_at)
+VALUES (1, '健康达人', 'demo', '$2b$10$i65WrNmS.MN/ScfII8xA0eKGA72Lg8KnfABjKaaK/hVLUm2UkyYGi', NOW(), NOW());
 
 -- User profile
-INSERT INTO user_profile (id, user_id, age, height_cm, weight_kg, goal, taboo, taste_preference, warning_profile)
-VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无');
+INSERT INTO user_profile (id, user_id, age, height_cm, weight_kg, goal, taboo, taste_preference, warning_profile, avatar_url)
+VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', NULL);
 
 -- Food items (nutrition per 100g)
 INSERT INTO food_item (id, name, category, unit, calorie, protein, fat, carbohydrate, sugar, sodium) VALUES
