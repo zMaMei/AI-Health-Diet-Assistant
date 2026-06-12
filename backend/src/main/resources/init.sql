@@ -213,7 +213,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- 演示用户
 INSERT INTO `users` (`id`, `nickname`, `username`, `password_hash`, `created_at`, `updated_at`)
-VALUES (1, '健康达人', 'demo', '$2b$10$i65WrNmS.MN/ScfII8xA0eKGA72Lg8KnfABjKaaK/hVLUm2UkyYGi', NOW(), NOW());
+VALUES (1, '健康达人', 'demo', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW(), NOW());
 
 -- 用户健康档案
 INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`, `avatar_url`)
