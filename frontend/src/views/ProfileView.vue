@@ -14,12 +14,12 @@
 
       <!-- 已登录：显示用户信息 -->
       <div v-else class="card user-card">
-        <div class="avatar-wrapper" @click="triggerAvatarUpload">
+        <div class="avatar-wrapper" @click="openCropModal">
           <img v-if="auth.state.avatarUrl" :src="auth.state.avatarUrl" class="user-avatar-img" />
           <div v-else class="user-avatar">👤</div>
           <div class="avatar-camera">📷</div>
         </div>
-        <input type="file" ref="avatarInput" accept="image/*" style="display:none" @change="onAvatarChange" />
+
         <div class="user-info">
           <div class="nickname-row">
             <input v-if="editingNickname" ref="nicknameInput"
@@ -158,6 +158,45 @@
       </div>
     </template>
 
+  <!-- 头像裁剪模态框 -->
+  <div v-if="showAvatarModal" class="modal-overlay" @click.self="closeAvatarModal">
+    <div class="modal-sheet" style="width: 340px;">
+      <div class="modal-header">
+        <span class="modal-title">编辑头像</span>
+        <span class="modal-close" @click="closeAvatarModal">✕</span>
+      </div>
+
+      <!-- 裁剪区域 -->
+      <div class="crop-container">
+        <img ref="cropImage" :src="avatarCropSrc" alt="" class="crop-image" />
+      </div>
+      <p class="crop-hint">拖动或缩放调整头像区域</p>
+
+      <!-- 缩放滑块 -->
+      <div class="zoom-control">
+        <span>🔍</span>
+        <input type="range" min="50" max="200" value="100" class="zoom-slider"
+               @input="onZoomChange" />
+        <span>🔎</span>
+      </div>
+
+      <!-- 选择图片按钮 -->
+      <div class="crop-actions-secondary">
+        <button class="btn btn-outline btn-sm" @click="selectCropImage">选择图片</button>
+        <input type="file" ref="cropFileInput" accept="image/*" style="display:none"
+               @change="onCropFileChange" />
+      </div>
+
+      <!-- 底部按钮 -->
+      <div class="crop-actions">
+        <button class="btn btn-cancel" @click="closeAvatarModal">取消</button>
+        <button class="btn btn-primary btn-save" @click="saveAvatar" :disabled="!cropperReady">
+          保存头像
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 登录/注册模态框 -->
   <div v-if="showAuthModal" class="modal-overlay" @click.self="showAuthModal = false">
     <div class="modal-sheet">
@@ -198,6 +237,8 @@
 import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.css'
 
 const loading = ref(false)
 const profile = ref(null)
@@ -232,10 +273,96 @@ const showAuthModal = ref(false)
 const authTab = ref('login')
 const authLoading = ref(false)
 const authError = ref('')
-const avatarInput = ref(null)
-
 const loginForm = ref({ username: '', password: '' })
 const registerForm = ref({ username: '', password: '', confirmPassword: '' })
+
+// ==================== 头像裁剪 ====================
+const showAvatarModal = ref(false)
+const avatarCropSrc = ref('')
+const cropImage = ref(null)
+const cropFileInput = ref(null)
+const cropperReady = ref(false)
+let cropperInstance = null
+
+function openCropModal() {
+  avatarCropSrc.value = auth.state.avatarUrl || ''
+  showAvatarModal.value = true
+  nextTick(() => {
+    if (avatarCropSrc.value) {
+      initCropper()
+    } else {
+      selectCropImage()
+    }
+  })
+}
+
+function initCropper() {
+  const img = cropImage.value
+  if (!img) return
+  if (cropperInstance) cropperInstance.destroy()
+  cropperInstance = new Cropper(img, {
+    aspectRatio: 1,
+    viewMode: 1,
+    dragMode: 'move',
+    guides: false,
+    background: false,
+    rotatable: false,
+    scalable: true,
+    zoomable: true,
+    zoomOnWheel: true,
+    ready() {
+      cropperReady.value = true
+    },
+  })
+}
+
+function onZoomChange(e) {
+  if (!cropperInstance) return
+  cropperInstance.zoomTo(Number(e.target.value) / 100)
+}
+
+function selectCropImage() {
+  cropFileInput.value?.click()
+}
+
+function onCropFileChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const url = URL.createObjectURL(file)
+  avatarCropSrc.value = url
+  cropperReady.value = false
+  if (cropperInstance) {
+    cropperInstance.replace(url)
+    cropperReady.value = true
+  } else {
+    // Cropper not initialized yet (first time selecting image)
+    nextTick(() => initCropper())
+  }
+  e.target.value = ''
+}
+
+async function saveAvatar() {
+  if (!cropperInstance) return
+  const canvas = cropperInstance.getCroppedCanvas({ width: 256, height: 256 })
+  canvas.toBlob(async (blob) => {
+    const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+    try {
+      await auth.uploadAvatar(file)
+      closeAvatarModal()
+    } catch (e) {
+      alert('头像上传失败')
+    }
+  }, 'image/jpeg', 0.9)
+}
+
+function closeAvatarModal() {
+  showAvatarModal.value = false
+  cropperReady.value = false
+  if (cropperInstance) {
+    cropperInstance.destroy()
+    cropperInstance = null
+  }
+}
 
 async function handleLogin() {
   authError.value = ''
@@ -294,21 +421,6 @@ async function handleLogout() {
   profile.value = null
 }
 
-function triggerAvatarUpload() {
-  avatarInput.value?.click()
-}
-
-async function onAvatarChange(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  try {
-    await auth.uploadAvatar(file)
-  } catch (e) {
-    alert('头像上传失败')
-  } finally {
-    if (avatarInput.value) avatarInput.value.value = ''
-  }
-}
 
 async function fetchData() {
   if (!auth.state.isLoggedIn) return
@@ -695,5 +807,71 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: #f44336;
   font-size: 13px;
   margin: 0;
+}
+
+/* 头像裁剪模态框 */
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.crop-container {
+  width: 100%;
+  height: 280px;
+  background: #333;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 8px;
+}
+.crop-container .crop-image {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+.crop-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 12px;
+}
+.zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 14px;
+}
+.zoom-slider {
+  flex: 1;
+  accent-color: #4CAF50;
+}
+.crop-actions-secondary {
+  padding-bottom: 12px;
+  text-align: center;
+}
+.crop-actions {
+  display: flex;
+  gap: 12px;
+}
+.btn-cancel {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #666;
+  font-size: 14px;
+}
+.btn-save {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
