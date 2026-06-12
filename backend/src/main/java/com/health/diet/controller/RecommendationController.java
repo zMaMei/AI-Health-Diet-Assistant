@@ -28,8 +28,10 @@ public class RecommendationController {
 
     @PostMapping("/feedback")
     public ApiResponse<RecommendationVO> submitFeedback(
-            @Valid @RequestBody RecommendationFeedbackCommand command) {
-        RecommendationVO vo = recommendationService.saveFeedbackAndRefresh(command);
+            @Valid @RequestBody RecommendationFeedbackCommand command,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        RecommendationVO vo = recommendationService.saveFeedbackAndRefresh(command, userId);
         return ApiResponse.success(vo);
     }
 }

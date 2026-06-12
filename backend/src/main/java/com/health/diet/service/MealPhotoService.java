@@ -58,12 +58,16 @@ public class MealPhotoService {
     }
 
     /** 删除照片记录并删除磁盘文件 */
-    public void delete(Long id) {
+    public void delete(Long id, Long userId) {
         MealPhoto photo = mealPhotoRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("照片记录不存在: id={}", id);
                     return new IllegalArgumentException("照片记录不存在");
                 });
+        // 验证所有权
+        if (!photo.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权删除此照片");
+        }
 
         // 删除磁盘文件
         Path filePath = UPLOAD_ROOT.resolve(photo.getImageUrl().replaceFirst("^/diet-images/", ""));

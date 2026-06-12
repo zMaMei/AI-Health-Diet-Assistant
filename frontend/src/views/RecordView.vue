@@ -608,6 +608,10 @@ async function checkWarnings() {
 
 // ==================== Photo Modal ====================
 function openPhotoModal() {
+  if (!auth.state.isLoggedIn) {
+    showLoginToast()
+    return
+  }
   showPhotoModal.value = true
   photoFile.value = null
   photoAnalyzed.value = false
@@ -738,6 +742,10 @@ function formatVoiceTime(seconds) {
 }
 
 function openVoiceModal() {
+  if (!auth.state.isLoggedIn) {
+    showLoginToast()
+    return
+  }
   showVoiceModal.value = true
   voiceRecording.value = false
   voiceAnalyzed.value = false
@@ -921,6 +929,10 @@ async function saveFromVoice() {
 
 // ==================== Manual Modal ====================
 function openManualModal() {
+  if (!auth.state.isLoggedIn) {
+    showLoginToast()
+    return
+  }
   showManualModal.value = true
   manualForm.value = { foodName: '', mealType: '午餐', amount: 1 }
   manualAnalysisResult.value = null

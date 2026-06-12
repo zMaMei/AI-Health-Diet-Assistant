@@ -40,18 +40,22 @@ public class VoiceRecordController {
     /** 更新语音记录的餐次类型（用户确认保存后回填） */
     @PutMapping("/{id}/meal-type")
     public ApiResponse<Void> updateMealType(@PathVariable Long id,
-                                             @RequestBody Map<String, String> body) {
+                                             @RequestBody Map<String, String> body,
+                                             HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         String mealType = body.get("mealType");
         log.info("PUT /api/voice-records/{}/meal-type — mealType={}", id, mealType);
-        voiceRecordService.updateMealType(id, mealType);
+        voiceRecordService.updateMealType(id, mealType, userId);
         return ApiResponse.success();
     }
 
     /** 删除语音记录 + 磁盘文件 */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/voice-records/{} — 删除语音记录", id);
-        voiceRecordService.delete(id);
+        voiceRecordService.delete(id, userId);
         return ApiResponse.success();
     }
 }

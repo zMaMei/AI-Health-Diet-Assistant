@@ -39,8 +39,10 @@ public class AlertRuleController {
 
     @PutMapping("/{ruleId}")
     public ApiResponse<Void> updateRule(@PathVariable Long ruleId,
-                                         @RequestBody AlertRuleUpdateCommand command) {
-        alertService.updateRule(ruleId, command);
+                                         @RequestBody AlertRuleUpdateCommand command,
+                                         HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        alertService.updateRule(ruleId, command, userId);
         return ApiResponse.success();
     }
 

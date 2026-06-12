@@ -77,9 +77,13 @@ public class RecommendationService {
         return result;
     }
 
-    public RecommendationVO saveFeedbackAndRefresh(RecommendationFeedbackCommand command) {
+    public RecommendationVO saveFeedbackAndRefresh(RecommendationFeedbackCommand command, Long userId) {
         Recommendation rec = recommendationRepository.findById(command.getRecommendationId())
                 .orElseThrow(() -> new IllegalArgumentException("推荐记录不存在"));
+        // 验证所有权
+        if (!rec.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权提交此反馈");
+        }
 
         rec.setFeedback(command.getFeedback());
         recommendationRepository.save(rec);

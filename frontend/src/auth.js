@@ -86,9 +86,7 @@ async function logout() {
 async function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await axios.post('/api/auth/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const res = await axios.post('/api/auth/avatar', formData)
   const avatarUrl = res.data.data
   state.avatarUrl = avatarUrl
   saveToStorage()

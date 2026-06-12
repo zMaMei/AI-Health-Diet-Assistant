@@ -57,9 +57,11 @@ public class MealPhotoController {
 
     /** 删除照片（记录 + 磁盘文件） */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/meal-photos/{} — 删除照片", id);
-        mealPhotoService.delete(id);
+        mealPhotoService.delete(id, userId);
         return ApiResponse.success();
     }
 }

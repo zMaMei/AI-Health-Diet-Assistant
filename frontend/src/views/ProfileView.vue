@@ -349,8 +349,9 @@ async function saveNickname() {
   const trimmed = nicknameDraft.value.trim()
   if (trimmed && trimmed !== profile.value?.nickname) {
     try {
-      await api.updateNickname(trimmed)
-      profile.value.nickname = trimmed
+      await api.updateProfile({ nickname: trimmed })
+      auth.state.nickname = trimmed
+      if (profile.value) profile.value.nickname = trimmed
     } catch (e) {
       console.error('Failed to update nickname', e)
     }

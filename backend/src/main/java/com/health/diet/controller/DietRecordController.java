@@ -51,16 +51,20 @@ public class DietRecordController {
 
     @PutMapping("/{id}")
     public ApiResponse<Void> update(@PathVariable Long id,
-                                     @RequestBody DietRecordUpdateCommand command) {
+                                     @RequestBody DietRecordUpdateCommand command,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("PUT /api/diet-records/{} — 更新记录", id);
-        dietRecordService.update(id, command);
+        dietRecordService.update(id, command, userId);
         return ApiResponse.success();
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/diet-records/{} — 删除记录", id);
-        dietRecordService.delete(id);
+        dietRecordService.delete(id, userId);
         log.info("DELETE /api/diet-records/{} — 删除成功", id);
         return ApiResponse.success();
     }
