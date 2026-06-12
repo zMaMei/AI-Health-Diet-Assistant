@@ -6,6 +6,11 @@
     <main class="app-main">
       <router-view />
     </main>
+    <!-- 全局 toast -->
+    <transition name="fade">
+      <div v-if="toast.visible.value" class="global-toast">{{ toast.message.value }}</div>
+    </transition>
+
     <nav class="app-nav">
       <router-link to="/record" class="nav-item" active-class="active">
         <span class="nav-icon">📝</span>
@@ -30,6 +35,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import toast from './toast.js'
 
 const route = useRoute()
 const currentTitle = computed(() => route.meta.title || 'AI健康饮食助手')
@@ -173,4 +179,28 @@ input:focus, select:focus, textarea:focus {
 .tag-orange { background: #FFF3E0; color: #E65100; }
 .tag-red { background: #FFEBEE; color: #C62828; }
 .tag-blue { background: #E3F2FD; color: #1565C0; }
+
+/* 全局 toast */
+.global-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 9999;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.35s;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

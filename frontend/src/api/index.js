@@ -1,5 +1,6 @@
 import axios from 'axios'
 import auth from '../auth.js'
+import toast from '../toast.js'
 
 const api = axios.create({
   baseURL: '/api',
@@ -22,7 +23,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       auth.logout()
       if (window.location.pathname !== '/profile') {
-        alert('登录已过期，请前往"我的"页面重新登录')
+        toast.show('请先在"我的"页面登录')
       }
     }
     return Promise.reject(error)

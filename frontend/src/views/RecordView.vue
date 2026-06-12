@@ -1,11 +1,5 @@
 <template>
   <div class="record-page">
-    <!-- 未登录提示 toast -->
-    <transition name="fade">
-      <div v-if="loginToastVisible" class="login-toast">
-        请先在"我的"页面登录
-      </div>
-    </transition>
 
     <!-- Quick add buttons -->
     <div class="quick-actions">
@@ -422,13 +416,10 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
-
-const loginToastVisible = ref(false)
+import toast from '../toast.js'
 
 function showLoginToast() {
-  if (loginToastVisible.value) return
-  loginToastVisible.value = true
-  setTimeout(() => { loginToastVisible.value = false }, 2000)
+  toast.show('请先在"我的"页面登录')
 }
 
 const today = new Date().toISOString().split('T')[0]
@@ -1507,24 +1498,4 @@ onMounted(async () => {
 .modal-content select, .modal-content input { margin-bottom: 8px; }
 .voice-result { margin-top: 12px; }
 .entity-row { display: flex; gap: 8px; margin: 8px 0; }
-
-.login-toast {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  z-index: 500;
-  white-space: nowrap;
-}
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
 </style>
