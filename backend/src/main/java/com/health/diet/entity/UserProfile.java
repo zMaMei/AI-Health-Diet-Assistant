@@ -34,6 +34,9 @@ public class UserProfile {
     @Column(name = "warning_profile", length = 255)
     private String warningProfile;
 
+    @Column(name = "avatar_url", length = 255)
+    private String avatarUrl;
+
     public UserProfile() {}
 
     public UserProfile(Long userId, String goal) {
@@ -59,6 +62,7 @@ public class UserProfile {
     public String getTaboo() { return taboo; }
     public String getTastePreference() { return tastePreference; }
     public String getWarningProfile() { return warningProfile; }
+    public String getAvatarUrl() { return avatarUrl; }
 
     public void setAge(Integer age) { this.age = age; }
     public void setHeightCm(BigDecimal heightCm) { this.heightCm = heightCm; }
@@ -67,4 +71,5 @@ public class UserProfile {
     public void setTaboo(String taboo) { this.taboo = taboo; }
     public void setTastePreference(String tastePreference) { this.tastePreference = tastePreference; }
     public void setWarningProfile(String warningProfile) { this.warningProfile = warningProfile; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 }
