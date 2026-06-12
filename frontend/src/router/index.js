@@ -17,4 +17,10 @@ const router = createRouter({
   routes,
 })
 
+// 不做页面级拦截，四个 tab 始终可访问
+// 登录态检查由各页面组件内部处理
+router.beforeEach((to, from, next) => {
+  next()
+})
+
 export default router
