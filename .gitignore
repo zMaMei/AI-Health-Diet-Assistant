@@ -17,3 +17,10 @@ frontend/node_modules/
 Thumbs.db
 backend/uploads/voice/**
 !backend/uploads/voice/.gitkeep
+
+# Avatars
+backend/uploads/avatars/**
+!backend/uploads/avatars/.gitkeep
+
+# Superpowers brainstorming files
+.superpowers/
