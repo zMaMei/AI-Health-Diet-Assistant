@@ -328,6 +328,10 @@ function selectCropImage() {
 function onCropFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
+  // 释放上一个 blob URL
+  if (avatarCropSrc.value && avatarCropSrc.value.startsWith('blob:')) {
+    URL.revokeObjectURL(avatarCropSrc.value)
+  }
   const url = URL.createObjectURL(file)
   avatarCropSrc.value = url
   cropperReady.value = false
@@ -358,6 +362,11 @@ async function saveAvatar() {
 function closeAvatarModal() {
   showAvatarModal.value = false
   cropperReady.value = false
+  // 释放 blob URL
+  if (avatarCropSrc.value && avatarCropSrc.value.startsWith('blob:')) {
+    URL.revokeObjectURL(avatarCropSrc.value)
+  }
+  avatarCropSrc.value = ''
   if (cropperInstance) {
     cropperInstance.destroy()
     cropperInstance = null
