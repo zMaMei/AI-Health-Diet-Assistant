@@ -22,7 +22,7 @@ public class MealPhotoService {
     private static final Logger log = LoggerFactory.getLogger(MealPhotoService.class);
 
     /** 照片存储根目录（相对于 backend 运行目录） */
-    private static final Path UPLOAD_ROOT = Paths.get("uploads/diet-images");
+    private static final Path UPLOAD_ROOT = Paths.get(System.getProperty("user.dir"), "uploads", "diet-images");
 
     private final MealPhotoRepository mealPhotoRepository;
 

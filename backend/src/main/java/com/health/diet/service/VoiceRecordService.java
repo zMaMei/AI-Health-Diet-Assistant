@@ -24,7 +24,7 @@ public class VoiceRecordService {
 
     private static final Logger log = LoggerFactory.getLogger(VoiceRecordService.class);
 
-    private static final Path UPLOAD_ROOT = Paths.get("uploads/voice");
+    private static final Path UPLOAD_ROOT = Paths.get(System.getProperty("user.dir"), "uploads", "voice");
 
     private final SpeechToTextAdapter speechToTextAdapter;
     private final FoodEntityParserAdapter foodEntityParserAdapter;

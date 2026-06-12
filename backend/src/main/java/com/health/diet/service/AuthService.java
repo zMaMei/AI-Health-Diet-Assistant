@@ -33,7 +33,7 @@ public class AuthService {
     private final UserProfileRepository userProfileRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    private static final Path AVATAR_DIR = Paths.get("uploads/avatars");
+    private static final Path AVATAR_DIR = Paths.get(System.getProperty("user.dir"), "uploads", "avatars");
 
     public AuthService(UserRepository userRepository,
                        UserProfileRepository userProfileRepository) {
@@ -138,7 +138,7 @@ public class AuthService {
         if (profile != null && profile.getAvatarUrl() != null) {
             try {
                 String oldPath = profile.getAvatarUrl().replace("/api/uploads/", "");
-                Files.deleteIfExists(Paths.get(oldPath));
+                Files.deleteIfExists(Paths.get(System.getProperty("user.dir"), oldPath));
             } catch (IOException e) {
                 log.warn("删除旧头像失败", e);
             }
