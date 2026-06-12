@@ -39,6 +39,25 @@ public class DietRecord {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // 营养快照字段（每100g/单位的实际摄入量 = food_item营养 × amount/100）
+    @Column(precision = 8, scale = 2)
+    private BigDecimal calorie = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal protein = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal fat = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal carbohydrate = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal sugar = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal sodium = BigDecimal.ZERO;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -56,6 +75,12 @@ public class DietRecord {
     public String getImageUrl() { return imageUrl; }
     public LocalDateTime getRecordTime() { return recordTime; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public BigDecimal getCalorie() { return calorie; }
+    public BigDecimal getProtein() { return protein; }
+    public BigDecimal getFat() { return fat; }
+    public BigDecimal getCarbohydrate() { return carbohydrate; }
+    public BigDecimal getSugar() { return sugar; }
+    public BigDecimal getSodium() { return sodium; }
 
     public void setId(Long id) { this.id = id; }
     public void setUserId(Long userId) { this.userId = userId; }
@@ -66,4 +91,10 @@ public class DietRecord {
     public void setSource(String source) { this.source = source; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public void setRecordTime(LocalDateTime recordTime) { this.recordTime = recordTime; }
+    public void setCalorie(BigDecimal calorie) { this.calorie = calorie; }
+    public void setProtein(BigDecimal protein) { this.protein = protein; }
+    public void setFat(BigDecimal fat) { this.fat = fat; }
+    public void setCarbohydrate(BigDecimal carbohydrate) { this.carbohydrate = carbohydrate; }
+    public void setSugar(BigDecimal sugar) { this.sugar = sugar; }
+    public void setSodium(BigDecimal sodium) { this.sodium = sodium; }
 }

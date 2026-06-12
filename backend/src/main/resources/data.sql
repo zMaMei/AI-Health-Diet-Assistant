@@ -86,11 +86,11 @@ INSERT INTO alert_rule (id, user_id, nutrient_type, threshold, enabled, updated_
 (2, 1, 'sugar', 50.00, true, NOW()),
 (3, 1, 'sodium', 2400.00, true, NOW());
 
--- Sample diet records for demo
-INSERT INTO diet_record (id, user_id, food_id, food_name, meal_type, amount, source, record_time, created_at) VALUES
-(1, 1, 1, '米饭', '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(2, 1, 7, '鸡蛋', '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(3, 1, 8, '牛奶', '早餐', 1.00, 'manual', '2026-06-10 08:30:00', NOW()),
-(4, 1, 1, '米饭', '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW()),
-(5, 1, 4, '鸡腿', '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW()),
-(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', '2026-06-10 12:00:00', NOW());
+-- Sample diet records for demo (with nutrition snapshot columns)
+INSERT INTO diet_record (id, user_id, food_id, food_name, meal_type, amount, source, calorie, protein, fat, carbohydrate, sugar, sodium, record_time, created_at) VALUES
+(1, 1, 1, '米饭', '早餐', 1.00, 'manual', 116.00, 2.60, 0.30, 25.90, 0.10, 2.00, '2026-06-12 08:30:00', NOW()),
+(2, 1, 7, '鸡蛋', '早餐', 1.00, 'manual', 144.00, 13.30, 8.80, 2.80, 0.00, 131.00, '2026-06-12 08:30:00', NOW()),
+(3, 1, 8, '牛奶', '早餐', 1.00, 'manual', 65.00, 3.00, 3.60, 4.80, 4.80, 40.00, '2026-06-12 08:30:00', NOW()),
+(4, 1, 1, '米饭', '午餐', 1.00, 'manual', 116.00, 2.60, 0.30, 25.90, 0.10, 2.00, '2026-06-12 12:00:00', NOW()),
+(5, 1, 4, '鸡腿', '午餐', 1.00, 'manual', 181.00, 20.20, 11.00, 0.00, 0.00, 80.00, '2026-06-12 12:00:00', NOW()),
+(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', 25.00, 2.00, 1.00, 3.00, 1.00, 150.00, '2026-06-12 12:00:00', NOW());

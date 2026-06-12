@@ -18,6 +18,8 @@ public class DietRecordVO {
     private BigDecimal protein;
     private BigDecimal fat;
     private BigDecimal carbohydrate;
+    private BigDecimal sugar;
+    private BigDecimal sodium;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -45,4 +47,8 @@ public class DietRecordVO {
     public void setFat(BigDecimal fat) { this.fat = fat; }
     public BigDecimal getCarbohydrate() { return carbohydrate; }
     public void setCarbohydrate(BigDecimal carbohydrate) { this.carbohydrate = carbohydrate; }
+    public BigDecimal getSugar() { return sugar; }
+    public void setSugar(BigDecimal sugar) { this.sugar = sugar; }
+    public BigDecimal getSodium() { return sodium; }
+    public void setSodium(BigDecimal sodium) { this.sodium = sodium; }
 }

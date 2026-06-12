@@ -7,10 +7,8 @@ import com.health.diet.dto.command.AlertRuleUpdateCommand;
 import com.health.diet.dto.vo.AlertRuleVO;
 import com.health.diet.entity.AlertRule;
 import com.health.diet.entity.DietRecord;
-import com.health.diet.entity.FoodItem;
 import com.health.diet.repository.AlertRuleRepository;
 import com.health.diet.repository.DietRecordRepository;
-import com.health.diet.repository.FoodItemRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,7 +24,6 @@ public class AlertService {
 
     private final AlertRuleRepository alertRuleRepository;
     private final DietRecordRepository dietRecordRepository;
-    private final FoodItemRepository foodItemRepository;
 
     private static final Map<String, String> NUTRIENT_NAMES = Map.of(
             "calorie", "热量",
@@ -41,11 +38,9 @@ public class AlertService {
     );
 
     public AlertService(AlertRuleRepository alertRuleRepository,
-                        DietRecordRepository dietRecordRepository,
-                        FoodItemRepository foodItemRepository) {
+                        DietRecordRepository dietRecordRepository) {
         this.alertRuleRepository = alertRuleRepository;
         this.dietRecordRepository = dietRecordRepository;
-        this.foodItemRepository = foodItemRepository;
     }
 
     public Long createRule(AlertRuleCreateCommand command) {
@@ -88,15 +83,9 @@ public class AlertService {
         BigDecimal sodiumTotal = BigDecimal.ZERO;
 
         for (DietRecord record : records) {
-            if (record.getFoodId() != null) {
-                FoodItem food = foodItemRepository.findById(record.getFoodId()).orElse(null);
-                if (food != null) {
-                    BigDecimal ratio = record.getAmount().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                    calorieTotal = calorieTotal.add(food.getCalorie().multiply(ratio));
-                    if (food.getSugar() != null) sugarTotal = sugarTotal.add(food.getSugar().multiply(ratio));
-                    if (food.getSodium() != null) sodiumTotal = sodiumTotal.add(food.getSodium().multiply(ratio));
-                }
-            }
+            calorieTotal = calorieTotal.add(nvl(record.getCalorie()));
+            sugarTotal = sugarTotal.add(nvl(record.getSugar()));
+            sodiumTotal = sodiumTotal.add(nvl(record.getSodium()));
         }
 
         for (AlertRule rule : rules) {
@@ -134,5 +123,9 @@ public class AlertService {
         vo.setThreshold(rule.getThreshold());
         vo.setEnabled(rule.getEnabled());
         return vo;
+    }
+
+    private BigDecimal nvl(BigDecimal val) {
+        return val != null ? val : BigDecimal.ZERO;
     }
 }
