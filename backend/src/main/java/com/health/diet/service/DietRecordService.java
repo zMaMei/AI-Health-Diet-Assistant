@@ -115,13 +115,17 @@ public class DietRecordService {
         return records.stream().map(this::toVO).toList();
     }
 
-    public void update(Long id, DietRecordUpdateCommand command) {
+    public void update(Long id, DietRecordUpdateCommand command, Long userId) {
         log.info("更新饮食记录: id={}", id);
         DietRecord record = dietRecordRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("饮食记录不存在: id={}", id);
                     return new IllegalArgumentException("饮食记录不存在");
                 });
+        // 验证所有权
+        if (!record.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权修改此记录");
+        }
 
         if (command.getFoodId() != null) record.setFoodId(command.getFoodId());
         if (command.getFoodName() != null) record.setFoodName(command.getFoodName());
@@ -138,10 +142,15 @@ public class DietRecordService {
         log.info("饮食记录已更新: id={}", id);
     }
 
-    public void delete(Long id) {
-        if (!dietRecordRepository.existsById(id)) {
-            log.warn("尝试删除不存在的饮食记录: id={}", id);
-            throw new IllegalArgumentException("饮食记录不存在");
+    public void delete(Long id, Long userId) {
+        DietRecord record = dietRecordRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("尝试删除不存在的饮食记录: id={}", id);
+                    return new IllegalArgumentException("饮食记录不存在");
+                });
+        // 验证所有权
+        if (!record.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权删除此记录");
         }
         dietRecordRepository.deleteById(id);
         log.info("饮食记录已删除: id={}", id);

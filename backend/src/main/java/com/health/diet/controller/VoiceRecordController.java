@@ -3,6 +3,7 @@ package com.health.diet.controller;
 import com.health.diet.common.ApiResponse;
 import com.health.diet.dto.vo.VoiceRecordVO;
 import com.health.diet.service.VoiceRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,8 +28,9 @@ public class VoiceRecordController {
     /** 查询某日所有语音记录 */
     @GetMapping
     public ApiResponse<List<VoiceRecordVO>> list(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         List<VoiceRecordVO> result = voiceRecordService.listByDate(userId, date);
         log.debug("GET /api/voice-records — userId={}, date={}, count={}",
                 userId, date, result.size());
@@ -38,18 +40,22 @@ public class VoiceRecordController {
     /** 更新语音记录的餐次类型（用户确认保存后回填） */
     @PutMapping("/{id}/meal-type")
     public ApiResponse<Void> updateMealType(@PathVariable Long id,
-                                             @RequestBody Map<String, String> body) {
+                                             @RequestBody Map<String, String> body,
+                                             HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         String mealType = body.get("mealType");
         log.info("PUT /api/voice-records/{}/meal-type — mealType={}", id, mealType);
-        voiceRecordService.updateMealType(id, mealType);
+        voiceRecordService.updateMealType(id, mealType, userId);
         return ApiResponse.success();
     }
 
     /** 删除语音记录 + 磁盘文件 */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/voice-records/{} — 删除语音记录", id);
-        voiceRecordService.delete(id);
+        voiceRecordService.delete(id, userId);
         return ApiResponse.success();
     }
 }

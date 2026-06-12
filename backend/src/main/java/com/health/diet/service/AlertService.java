@@ -53,9 +53,13 @@ public class AlertService {
         return rule.getId();
     }
 
-    public void updateRule(Long ruleId, AlertRuleUpdateCommand command) {
+    public void updateRule(Long ruleId, AlertRuleUpdateCommand command, Long userId) {
         AlertRule rule = alertRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new IllegalArgumentException("预警规则不存在"));
+        // 验证所有权
+        if (!rule.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权修改此规则");
+        }
         if (command.getThreshold() != null) rule.updateThreshold(command.getThreshold());
         if (command.getEnabled() != null) rule.setEnabled(command.getEnabled());
         alertRuleRepository.save(rule);

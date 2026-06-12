@@ -24,7 +24,7 @@ public class VoiceRecordService {
 
     private static final Logger log = LoggerFactory.getLogger(VoiceRecordService.class);
 
-    private static final Path UPLOAD_ROOT = Paths.get("uploads/voice");
+    private static final Path UPLOAD_ROOT = Paths.get("uploads", "voice");
 
     private final SpeechToTextAdapter speechToTextAdapter;
     private final FoodEntityParserAdapter foodEntityParserAdapter;
@@ -111,18 +111,26 @@ public class VoiceRecordService {
     }
 
     /** 更新语音记录的餐次类型（用户确认保存后回填） */
-    public void updateMealType(Long id, String mealType) {
+    public void updateMealType(Long id, String mealType, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
+        // 验证所有权
+        if (!record.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权修改此语音记录");
+        }
         record.setMealType(mealType);
         voiceRecordRepository.save(record);
         log.info("语音记录餐次已更新: id={}, mealType={}", id, mealType);
     }
 
     /** 删除语音记录 + 磁盘文件 */
-    public void delete(Long id) {
+    public void delete(Long id, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
+        // 验证所有权
+        if (!record.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权删除此语音记录");
+        }
 
         Path filePath = UPLOAD_ROOT.resolve(
                 record.getAudioUrl().replaceFirst("^/voice/", ""));

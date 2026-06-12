@@ -4,6 +4,7 @@ import com.health.diet.common.ApiResponse;
 import com.health.diet.dto.command.MealPhotoCreateCommand;
 import com.health.diet.dto.vo.MealPhotoVO;
 import com.health.diet.service.MealPhotoService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,9 @@ public class MealPhotoController {
 
     /** 新增照片记录（imageUrl 由 /api/food/recognize 返回后前端传入） */
     @PostMapping
-    public ApiResponse<Long> create(@Valid @RequestBody MealPhotoCreateCommand command) {
+    public ApiResponse<Long> create(@Valid @RequestBody MealPhotoCreateCommand command,
+                                     HttpServletRequest request) {
+        command.setUserId((Long) request.getAttribute("userId"));
         log.info("POST /api/meal-photos — 新增照片记录: userId={}, date={}, mealType={}",
                 command.getUserId(), command.getRecordDate(), command.getMealType());
         Long id = mealPhotoService.create(command);
@@ -37,9 +40,10 @@ public class MealPhotoController {
     /** 查询某日所有照片 */
     @GetMapping
     public ApiResponse<List<MealPhotoVO>> list(
-            @RequestParam Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) String mealType) {
+            @RequestParam(required = false) String mealType,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         List<MealPhotoVO> result;
         if (mealType != null && !mealType.isBlank()) {
             result = mealPhotoService.listByMeal(userId, date, mealType);
@@ -53,9 +57,11 @@ public class MealPhotoController {
 
     /** 删除照片（记录 + 磁盘文件） */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/meal-photos/{} — 删除照片", id);
-        mealPhotoService.delete(id);
+        mealPhotoService.delete(id, userId);
         return ApiResponse.success();
     }
 }

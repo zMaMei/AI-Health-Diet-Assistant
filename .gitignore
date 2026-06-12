@@ -1,6 +1,6 @@
-# Uploads (user-generated food photos)
-backend/uploads/diet-images/**
-!backend/uploads/diet-images/.gitkeep
+# User uploads (diet photos, voice recordings, avatars)
+backend/uploads/
+uploads/
 
 # Build output
 backend/target/
@@ -15,5 +15,6 @@ frontend/node_modules/
 # OS
 .DS_Store
 Thumbs.db
-backend/uploads/voice/**
-!backend/uploads/voice/.gitkeep
+
+# Superpowers brainstorming files
+.superpowers/

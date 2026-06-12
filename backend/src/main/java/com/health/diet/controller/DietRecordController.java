@@ -5,6 +5,7 @@ import com.health.diet.dto.command.DietRecordCreateCommand;
 import com.health.diet.dto.command.DietRecordUpdateCommand;
 import com.health.diet.dto.vo.DietRecordVO;
 import com.health.diet.service.DietRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,9 @@ public class DietRecordController {
     }
 
     @PostMapping
-    public ApiResponse<Long> create(@Valid @RequestBody DietRecordCreateCommand command) {
+    public ApiResponse<Long> create(@Valid @RequestBody DietRecordCreateCommand command,
+                                     HttpServletRequest request) {
+        command.setUserId((Long) request.getAttribute("userId"));
         log.info("POST /api/diet-records — 创建饮食记录: userId={}, foodName={}, mealType={}, amount={}, source={}",
                 command.getUserId(), command.getFoodName(), command.getMealType(),
                 command.getAmount(), command.getSource());
@@ -38,8 +41,9 @@ public class DietRecordController {
 
     @GetMapping
     public ApiResponse<List<DietRecordVO>> list(
-            @RequestParam Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.debug("GET /api/diet-records — 查询记录: userId={}, date={}", userId, date);
         List<DietRecordVO> result = dietRecordService.list(userId, date);
         return ApiResponse.success(result);
@@ -47,16 +51,20 @@ public class DietRecordController {
 
     @PutMapping("/{id}")
     public ApiResponse<Void> update(@PathVariable Long id,
-                                     @RequestBody DietRecordUpdateCommand command) {
+                                     @RequestBody DietRecordUpdateCommand command,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("PUT /api/diet-records/{} — 更新记录", id);
-        dietRecordService.update(id, command);
+        dietRecordService.update(id, command, userId);
         return ApiResponse.success();
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/diet-records/{} — 删除记录", id);
-        dietRecordService.delete(id);
+        dietRecordService.delete(id, userId);
         log.info("DELETE /api/diet-records/{} — 删除成功", id);
         return ApiResponse.success();
     }

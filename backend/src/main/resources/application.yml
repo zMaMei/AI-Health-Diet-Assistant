@@ -8,7 +8,7 @@ spring:
     url: jdbc:mysql://localhost:3306/diet_assistant?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: hanekawa8
+    password: your-password
   h2:
     console:
       enabled: true
@@ -36,7 +36,7 @@ logging:
 # 阿里云百炼 DashScope AI 配置（通义千问多模态模型）
 ai:
   dashscope:
-    api-key: sk-70ab6014cf71444fb4a0a0fdbbeecc25
+    api-key: temp
     model: qwen-omni-turbo              # 多模态模型：支持图片/文字/语音
     text-model: qwen-turbo-latest       # 纯文本模型：更便宜，用于文字解析
     multimodal-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation

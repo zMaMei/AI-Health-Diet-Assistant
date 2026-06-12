@@ -3,6 +3,7 @@ package com.health.diet.controller;
 import com.health.diet.common.ApiResponse;
 import com.health.diet.dto.vo.VoiceParseResultVO;
 import com.health.diet.service.VoiceRecordService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -29,8 +30,10 @@ public class VoiceParseController {
     @PostMapping("/parse")
     public ApiResponse<VoiceParseResultVO> parse(
             @RequestParam("audio") MultipartFile file,
-            @RequestParam(defaultValue = "1") Long userId,
-            @RequestParam(defaultValue = "0") Integer durationSeconds) {
+            @RequestParam(defaultValue = "0") Integer durationSeconds,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+
         if (file.isEmpty()) {
             return ApiResponse.error(400, "音频文件不能为空");
         }
