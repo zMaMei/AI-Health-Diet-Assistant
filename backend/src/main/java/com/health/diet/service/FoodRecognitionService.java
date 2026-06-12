@@ -43,7 +43,16 @@ public class FoodRecognitionService {
      */
     public FoodRecognizeResultVO recognizeImage(byte[] imageBytes, String contentType) {
         // Call AI adapter to analyze the image
-        List<FoodLabel> labels = imageRecognitionAdapter.detectFood(imageBytes, contentType);
+        List<FoodLabel> labels;
+        try {
+            labels = imageRecognitionAdapter.detectFood(imageBytes, contentType);
+        } catch (Exception e) {
+            log.error("AI image recognition failed", e);
+            FoodRecognizeResultVO result = new FoodRecognizeResultVO();
+            result.setImageUrl("analyzed-image");
+            result.setCandidates(List.of());
+            return result;
+        }
 
         FoodRecognizeResultVO result = new FoodRecognizeResultVO();
         result.setImageUrl("analyzed-image");
@@ -54,36 +63,26 @@ public class FoodRecognitionService {
             candidate.setFoodName(label.label());
             candidate.setConfidence(label.confidence());
 
-            // Try to match against the local food database for precise nutrition
-            FoodItem food = foodItemRepository.findByName(label.label()).orElse(null);
+            // ① 营养值 100% 使用 AI 根据图片实际内容分析的结果
+            candidate.setNutritionPreview(new NutritionPreview(
+                    label.calorie(),
+                    label.protein(),
+                    label.fat(),
+                    label.carbohydrate(),
+                    nvl(label.sugar()),
+                    nvl(label.sodium())
+            ));
 
+            // ② food_item 库仅用于补全 unit 和 category，不覆盖营养值
+            FoodItem food = foodItemRepository.findByName(label.label()).orElse(null);
             if (food != null) {
-                // Use database nutrition data (more accurate)
                 candidate.setUnit(food.getUnit());
-                candidate.setDefaultAmount(1.0);
                 candidate.setCategory(food.getCategory());
-                candidate.setNutritionPreview(new NutritionPreview(
-                        food.getCalorie(),
-                        food.getProtein(),
-                        food.getFat(),
-                        food.getCarbohydrate(),
-                        nvl(food.getSugar()),
-                        nvl(food.getSodium())
-                ));
             } else {
-                // Use AI-estimated nutrition as fallback
                 candidate.setUnit("份");
-                candidate.setDefaultAmount(1.0);
                 candidate.setCategory("未分类");
-                candidate.setNutritionPreview(new NutritionPreview(
-                        label.calorie(),
-                        label.protein(),
-                        label.fat(),
-                        label.carbohydrate(),
-                        nvl(label.sugar()),
-                        nvl(label.sodium())
-                ));
             }
+            candidate.setDefaultAmount(1.0);
 
             result.getCandidates().add(candidate);
         }
@@ -100,10 +99,28 @@ public class FoodRecognitionService {
      * @return nutrition preview, or null if analysis fails
      */
     public NutritionPreview analyzeFoodName(String foodName) {
-        // First try database lookup
+        // AI 营养分析优先
+        log.info("Requesting AI nutrition analysis for: {}", foodName);
+        try {
+            FoodLabel label = imageRecognitionAdapter.analyzeFoodByName(foodName);
+            if (label != null) {
+                return new NutritionPreview(
+                        label.calorie(),
+                        label.protein(),
+                        label.fat(),
+                        label.carbohydrate(),
+                        nvl(label.sugar()),
+                        nvl(label.sodium())
+                );
+            }
+        } catch (Exception e) {
+            log.warn("AI analysis failed for {}, falling back to database", foodName, e);
+        }
+
+        // AI 失败时兜底查 food_item 库
         FoodItem food = foodItemRepository.findByName(foodName).orElse(null);
         if (food != null) {
-            log.info("Found {} in database, returning precise nutrition", foodName);
+            log.info("Using database nutrition for: {}", foodName);
             return new NutritionPreview(
                     food.getCalorie(),
                     food.getProtein(),
@@ -114,21 +131,7 @@ public class FoodRecognitionService {
             );
         }
 
-        // Fall back to AI estimation
-        log.info("{} not in database, requesting AI estimation", foodName);
-        FoodLabel label = imageRecognitionAdapter.analyzeFoodByName(foodName);
-        if (label == null) {
-            return null;
-        }
-
-        return new NutritionPreview(
-                label.calorie(),
-                label.protein(),
-                label.fat(),
-                label.carbohydrate(),
-                nvl(label.sugar()),
-                nvl(label.sodium())
-        );
+        return null;
     }
 
     /**

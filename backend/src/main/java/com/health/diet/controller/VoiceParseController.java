@@ -22,25 +22,33 @@ public class VoiceParseController {
         this.voiceRecordService = voiceRecordService;
     }
 
+    /**
+     * POST /api/voice/parse
+     * 上传录音 → 保存文件到磁盘 → ASR → 食物实体解析 → 写 voice_record 表 → 返回结果
+     */
     @PostMapping("/parse")
-    public ApiResponse<VoiceParseResultVO> parse(@RequestParam("audio") MultipartFile file) {
+    public ApiResponse<VoiceParseResultVO> parse(
+            @RequestParam("audio") MultipartFile file,
+            @RequestParam(defaultValue = "1") Long userId,
+            @RequestParam(defaultValue = "0") Integer durationSeconds) {
         if (file.isEmpty()) {
             return ApiResponse.error(400, "音频文件不能为空");
         }
 
         try {
-            log.info("收到音频文件: name={}, size={}, type={}",
-                    file.getOriginalFilename(), file.getSize(), file.getContentType());
+            log.info("收到音频文件: name={}, size={}, type={}, duration={}s",
+                    file.getOriginalFilename(), file.getSize(),
+                    file.getContentType(), durationSeconds);
 
             byte[] audioBytes = file.getBytes();
             VoiceParseResultVO result = voiceRecordService.parseVoice(
-                    audioBytes, file.getContentType());
+                    userId, audioBytes, file.getContentType(), durationSeconds);
 
             return ApiResponse.success(result);
 
         } catch (IOException e) {
-            log.error("读取音频文件失败", e);
-            return ApiResponse.error(500, "音频文件读取失败，请重试");
+            log.error("读取/保存音频文件失败", e);
+            return ApiResponse.error(500, "音频处理失败，请重试");
         }
     }
 }

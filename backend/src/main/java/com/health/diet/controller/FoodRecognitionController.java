@@ -56,6 +56,9 @@ public class FoodRecognitionController {
         } catch (IOException e) {
             log.error("Failed to read uploaded image", e);
             return ApiResponse.error(500, "图片读取失败，请重试");
+        } catch (RuntimeException e) {
+            log.error("AI recognition failed", e);
+            return ApiResponse.error(500, e.getMessage());
         }
     }
 
@@ -71,13 +74,18 @@ public class FoodRecognitionController {
             return ApiResponse.error(400, "食物名称不能为空");
         }
 
-        log.info("Analyzing food text: {}", foodName);
-        NutritionPreview result = foodRecognitionService.analyzeFoodName(foodName.trim());
+        try {
+            log.info("Analyzing food text: {}", foodName);
+            NutritionPreview result = foodRecognitionService.analyzeFoodName(foodName.trim());
 
-        if (result == null) {
-            return ApiResponse.error(404, "未找到该食物的营养信息");
+            if (result == null) {
+                return ApiResponse.error(404, "未找到该食物的营养信息");
+            }
+
+            return ApiResponse.success(result);
+        } catch (RuntimeException e) {
+            log.error("AI text analysis failed", e);
+            return ApiResponse.error(500, e.getMessage());
         }
-
-        return ApiResponse.success(result);
     }
 }

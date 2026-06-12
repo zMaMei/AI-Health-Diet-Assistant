@@ -10,6 +10,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -44,26 +45,43 @@ public class FoodEntityParserAdapter {
         log.info("调用千问文本 API 提取食物实体: {}", text);
 
         String systemPrompt = """
-            你是一个食物实体提取助手。从用户的饮食描述中提取食物信息。
-            对每种食物给出：食物名称(foodName)、份量(amount)、单位(unit)、餐次(mealType)。
-            餐次从上下文推断，默认为"午餐"。单位从上下文推断（碗/个/份/杯/g/ml），默认为"份"。
+            你是一个专业的食物实体提取与营养分析助手。从用户的饮食描述中提取食物信息，
+            并估算每种食物的营养成分。
+
+            对每种食物给出：
+            - foodName: 食物中文名称
+            - amount: 份量(数字)
+            - unit: 单位（碗/个/份/杯/g/ml）
+            - mealType: 餐次（早餐/午餐/晚餐/夜宵/其他）
+            - calorie: 估算热量(kcal)
+            - protein: 估算蛋白质(g)
+            - fat: 估算脂肪(g)
+            - carbohydrate: 估算碳水化合物(g)
+            - sugar: 估算糖(g)
+            - sodium: 估算钠(mg)
+
+            **重要规则：复合菜品（如"韭菜炒鸡蛋""番茄炒蛋""青椒肉丝"）必须作为一个完整食物，
+            不要拆分为单独的食材。** 一道菜的营养成分按整道菜估算。
+            餐次从上下文推断，默认为"午餐"。单位从上下文推断，默认为"份"。
 
             严格按以下JSON格式返回，不要包含其他文字：
-            {"entities":[{"foodName":"米饭","amount":1,"unit":"碗","mealType":"午餐"}]}
+            {"entities":[{"foodName":"米饭","amount":1,"unit":"碗","mealType":"午餐","calorie":116,"protein":2.6,"fat":0.3,"carbohydrate":25.9,"sugar":0.1,"sodium":2.0}]}
             """;
 
+        // 使用多模态端点（纯文本内容格式），避免兼容模式 403
         Map<String, Object> body = Map.of(
-            "model", config.getTextModel(),
-            "messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", "请从以下文本中提取食物信息：" + text)
-            ),
-            "max_tokens", config.getMaxTokens()
+            "model", config.getModel(),
+            "input", Map.of("messages", List.of(
+                Map.of("role", "system", "content", List.of(Map.of("text", systemPrompt))),
+                Map.of("role", "user", "content", List.of(Map.of("text",
+                        "请从以下文本中提取食物信息：" + text)))
+            )),
+            "parameters", Map.of("max_tokens", config.getMaxTokens())
         );
 
         try {
             String resp = restClient.post()
-                    .uri(config.getTextUrl())
+                    .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
@@ -74,11 +92,8 @@ public class FoodEntityParserAdapter {
             return parseEntities(resp);
 
         } catch (Exception e) {
-            log.error("千问实体提取失败，降级为模拟数据", e);
-            return List.of(
-                new FoodEntity("米饭", 1.0, "碗", "午餐"),
-                new FoodEntity("鸡腿", 1.0, "个", "午餐")
-            );
+            log.error("千问实体提取失败", e);
+            throw new RuntimeException("AI 食物解析服务暂时不可用，请重试", e);
         }
     }
 
@@ -86,17 +101,27 @@ public class FoodEntityParserAdapter {
     private List<FoodEntity> parseEntities(String rawJson) throws Exception {
         Map<String, Object> root = objectMapper.readValue(rawJson, new TypeReference<>() {});
 
-        // OpenAI 兼容格式: choices[0].message.content
+        // 解析响应文本：先试多模态格式，再试 OpenAI 兼容格式
         String jsonText;
         try {
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) root.get("choices");
-            Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
-            Object content = msg.get("content");
-            if (content instanceof String s) jsonText = s;
-            else if (content instanceof List<?> l && !l.isEmpty()) {
-                jsonText = (String) ((Map<String, Object>) l.get(0)).get("text");
+            // 多模态格式: output.choices[0].message.content[0].text
+            Map<String, Object> output = (Map<String, Object>) root.get("output");
+            if (output != null) {
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) output.get("choices");
+                Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+                List<Map<String, Object>> content = (List<Map<String, Object>>) msg.get("content");
+                jsonText = (String) content.get(0).get("text");
             } else {
-                jsonText = "";
+                // OpenAI 兼容格式: choices[0].message.content
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) root.get("choices");
+                Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+                Object content = msg.get("content");
+                if (content instanceof String s) jsonText = s;
+                else if (content instanceof List<?> l && !l.isEmpty()) {
+                    jsonText = (String) ((Map<String, Object>) l.get(0)).get("text");
+                } else {
+                    jsonText = "";
+                }
             }
         } catch (Exception e) {
             jsonText = rawJson;
@@ -121,7 +146,13 @@ public class FoodEntityParserAdapter {
             (String) e.get("foodName"),
             toDouble(e, "amount", 1.0),
             (String) e.getOrDefault("unit", "份"),
-            (String) e.getOrDefault("mealType", "午餐")
+            (String) e.getOrDefault("mealType", "午餐"),
+            bd(toDouble(e, "calorie", 0)),
+            bd(toDouble(e, "protein", 0)),
+            bd(toDouble(e, "fat", 0)),
+            bd(toDouble(e, "carbohydrate", 0)),
+            bd(toDouble(e, "sugar", 0)),
+            bd(toDouble(e, "sodium", 0))
         )).toList();
     }
 
@@ -132,7 +163,22 @@ public class FoodEntityParserAdapter {
         return def;
     }
 
+    private BigDecimal bd(double v) {
+        return BigDecimal.valueOf(Math.round(v * 100.0) / 100.0);
+    }
+
     // ==================== FoodEntity 记录 ====================
 
-    public record FoodEntity(String foodName, double amount, String unit, String mealType) {}
+    public record FoodEntity(
+            String foodName,
+            double amount,
+            String unit,
+            String mealType,
+            BigDecimal calorie,
+            BigDecimal protein,
+            BigDecimal fat,
+            BigDecimal carbohydrate,
+            BigDecimal sugar,
+            BigDecimal sodium
+    ) {}
 }
