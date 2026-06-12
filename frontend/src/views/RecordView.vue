@@ -360,9 +360,12 @@
           <p>❌ {{ manualError }}</p>
         </div>
 
-        <button class="btn btn-primary" @click="saveManual"
-                v-if="manualAnalysisResult || manualForm.foodName"
-                :disabled="manualSaving" style="width:100%;margin-top:8px">
+        <button class="btn" @click="saveManual"
+                v-if="manualForm.foodName"
+                :disabled="!manualAnalysisResult || manualSaving"
+                :class="manualAnalysisResult && !manualSaving ? 'btn-primary' : 'btn-disabled'"
+                :title="!manualAnalysisResult ? '请先点击「智能分析」获取营养数据' : ''"
+                style="width:100%;margin-top:8px">
           {{ manualSaving ? '⏳ 保存中...' : '保存' }}
         </button>
 
@@ -936,7 +939,7 @@ async function startManualAnalyze() {
     }
   } catch (e) {
     console.error('文字分析失败', e)
-    manualError.value = '智能分析服务暂时不可用，可直接保存'
+    manualError.value = '智能分析服务暂时不可用，请稍后重试'
   } finally {
     manualAnalyzing.value = false
   }
@@ -965,6 +968,7 @@ async function saveManual() {
       payload.sodium = manualAnalysisResult.value.sodium
     }
     await api.createDietRecord(payload)
+    manualSaving.value = false
     closeManualModal()
     await fetchData()
     await checkWarnings()
@@ -1459,6 +1463,16 @@ onMounted(async () => {
 .analyze-btn.ready:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(76,175,80,0.3); }
 
 .cancel-btn { padding: 8px 20px; }
+.btn-disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
+  border: none;
+  padding: 10px 0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
 .form-group { margin-bottom: 12px; }
 .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
 .modal-actions { display: flex; flex-direction: column; gap: 8px; }
