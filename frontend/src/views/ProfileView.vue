@@ -2,18 +2,33 @@
   <div class="profile-page">
     <div v-if="loading" class="loading">加载中...</div>
 
-    <template v-else-if="profile">
+    <template v-else-if="profile || !auth.state.isLoggedIn">
       <!-- User info -->
-      <div class="card user-card">
+      <div v-if="!auth.state.isLoggedIn" class="card user-card" @click="showAuthModal = true">
         <div class="user-avatar">👤</div>
+        <div class="user-info">
+          <h3>点击登录/注册</h3>
+          <p>登录后可同步个人数据</p>
+        </div>
+      </div>
+
+      <!-- 已登录：显示用户信息 -->
+      <div v-else class="card user-card">
+        <div class="avatar-wrapper" @click="triggerAvatarUpload">
+          <img v-if="auth.state.avatarUrl" :src="auth.state.avatarUrl" class="user-avatar-img" />
+          <div v-else class="user-avatar">👤</div>
+          <div class="avatar-camera">📷</div>
+        </div>
+        <input type="file" ref="avatarInput" accept="image/*" style="display:none" @change="onAvatarChange" />
         <div class="user-info">
           <div class="nickname-row">
             <input v-if="editingNickname" ref="nicknameInput"
                    v-model="nicknameDraft" @blur="saveNickname" @keyup.enter="saveNickname"
                    class="nickname-input">
-            <h3 v-else @click="startEditNickname">{{ profile.nickname || '用户' }} ✎</h3>
+            <h3 v-else @click="startEditNickname">{{ auth.state.nickname || '用户' }} ✎</h3>
           </div>
-          <p v-if="profile.age || profile.heightCm || profile.weightKg">
+          <p v-if="auth.state.username">@{{ auth.state.username }}</p>
+          <p v-if="profile && (profile.age || profile.heightCm || profile.weightKg)">
             {{ profile.age || '-' }}岁 |
             {{ profile.heightCm || '-' }}cm |
             {{ profile.weightKg || '-' }}kg
@@ -21,93 +36,105 @@
         </div>
       </div>
 
-      <!-- Health goal -->
-      <div class="card">
-        <h3 class="card-title">🎯 健康目标</h3>
-        <select v-model="form.goal" class="profile-select">
-          <option value="均衡">均衡饮食</option>
-          <option value="减脂">减脂</option>
-          <option value="增肌">增肌</option>
-          <option value="控糖">控糖</option>
-        </select>
-      </div>
+      <template v-if="auth.state.isLoggedIn">
+        <!-- Health goal -->
+        <div class="card">
+          <h3 class="card-title">🎯 健康目标</h3>
+          <select v-model="form.goal" class="profile-select">
+            <option value="均衡">均衡饮食</option>
+            <option value="减脂">减脂</option>
+            <option value="增肌">增肌</option>
+            <option value="控糖">控糖</option>
+          </select>
+        </div>
 
-      <!-- Personal info -->
-      <div class="card">
-        <h3 class="card-title">📋 个人资料</h3>
-        <div class="form-row">
-          <label>年龄</label>
-          <input type="number" v-model.number="form.age" placeholder="岁">
-        </div>
-        <div class="form-row">
-          <label>身高(cm)</label>
-          <input type="number" v-model.number="form.heightCm" placeholder="cm" step="0.1">
-        </div>
-        <div class="form-row">
-          <label>体重(kg)</label>
-          <input type="number" v-model.number="form.weightKg" placeholder="kg" step="0.1">
-        </div>
-      </div>
-
-      <!-- Preferences -->
-      <div class="card">
-        <h3 class="card-title">😋 口味偏好</h3>
-        <div class="tag-selector">
-          <button v-for="taste in tasteOptions" :key="taste"
-                  class="tag-btn"
-                  :class="{ selected: selectedTastes.includes(taste) }"
-                  @click="toggleTaste(taste)">
-            {{ taste }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Taboo -->
-      <div class="card">
-        <h3 class="card-title">🚫 忌口</h3>
-        <div class="tag-selector">
-          <button v-for="t in tabooOptions" :key="t"
-                  class="tag-btn"
-                  :class="{ selected: selectedTaboos.includes(t) }"
-                  @click="toggleTaboo(t)">
-            {{ t }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Warning Profile -->
-      <div class="card">
-        <h3 class="card-title">⚠️ 慢性病/特殊饮食</h3>
-        <div class="tag-selector">
-          <button v-for="w in warningOptions" :key="w"
-                  class="tag-btn"
-                  :class="{ selected: (form.warningProfile || '').includes(w) }"
-                  @click="toggleWarning(w)">
-            {{ w }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Alert rules -->
-      <div class="card">
-        <h3 class="card-title">🔔 预警阈值设置</h3>
-        <div class="alert-rule" v-for="rule in alertRules" :key="rule.id">
-          <div class="rule-header">
-            <span class="rule-name">{{ nutrientLabels[rule.nutrientType] || rule.nutrientType }}</span>
-            <label class="switch">
-              <input type="checkbox" v-model="rule.enabled" @change="toggleRule(rule)">
-              <span class="slider"></span>
-            </label>
+        <!-- Personal info -->
+        <div class="card">
+          <h3 class="card-title">📋 个人资料</h3>
+          <div class="form-row">
+            <label>年龄</label>
+            <input type="number" v-model.number="form.age" placeholder="岁">
           </div>
-          <div class="rule-input" v-if="rule.enabled">
-            <input type="number" v-model.number="rule.threshold" @change="updateRule(rule)">
-            <span class="rule-unit">{{ nutrientUnits[rule.nutrientType] || '' }}</span>
+          <div class="form-row">
+            <label>身高(cm)</label>
+            <input type="number" v-model.number="form.heightCm" placeholder="cm" step="0.1">
+          </div>
+          <div class="form-row">
+            <label>体重(kg)</label>
+            <input type="number" v-model.number="form.weightKg" placeholder="kg" step="0.1">
           </div>
         </div>
-      </div>
 
-      <!-- Save button -->
-      <button class="btn btn-primary save-btn" @click="saveProfile">保存设置</button>
+        <!-- Preferences -->
+        <div class="card">
+          <h3 class="card-title">😋 口味偏好</h3>
+          <div class="tag-selector">
+            <button v-for="taste in tasteOptions" :key="taste"
+                    class="tag-btn"
+                    :class="{ selected: selectedTastes.includes(taste) }"
+                    @click="toggleTaste(taste)">
+              {{ taste }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Taboo -->
+        <div class="card">
+          <h3 class="card-title">🚫 忌口</h3>
+          <div class="tag-selector">
+            <button v-for="t in tabooOptions" :key="t"
+                    class="tag-btn"
+                    :class="{ selected: selectedTaboos.includes(t) }"
+                    @click="toggleTaboo(t)">
+              {{ t }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Warning Profile -->
+        <div class="card">
+          <h3 class="card-title">⚠️ 慢性病/特殊饮食</h3>
+          <div class="tag-selector">
+            <button v-for="w in warningOptions" :key="w"
+                    class="tag-btn"
+                    :class="{ selected: (form.warningProfile || '').includes(w) }"
+                    @click="toggleWarning(w)">
+              {{ w }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Alert rules -->
+        <div class="card">
+          <h3 class="card-title">🔔 预警阈值设置</h3>
+          <div class="alert-rule" v-for="rule in alertRules" :key="rule.id">
+            <div class="rule-header">
+              <span class="rule-name">{{ nutrientLabels[rule.nutrientType] || rule.nutrientType }}</span>
+              <label class="switch">
+                <input type="checkbox" v-model="rule.enabled" @change="toggleRule(rule)">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="rule-input" v-if="rule.enabled">
+              <input type="number" v-model.number="rule.threshold" @change="updateRule(rule)">
+              <span class="rule-unit">{{ nutrientUnits[rule.nutrientType] || '' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save button -->
+        <button class="btn btn-primary save-btn" @click="saveProfile">保存设置</button>
+
+        <!-- 退出登录按钮 -->
+        <button v-if="auth.state.isLoggedIn" class="btn logout-btn" @click="handleLogout">
+          退出登录
+        </button>
+      </template>
+
+      <!-- 未登录占位 -->
+      <div v-if="!auth.state.isLoggedIn" style="text-align: center; padding: 40px 0; color: #ccc; font-size: 14px; line-height: 2;">
+        登录后可设置<br>健康目标 · 个人资料 · 预警阈值
+      </div>
 
       <!-- Privacy notice -->
       <div class="card privacy-card">
@@ -130,12 +157,47 @@
         <p>本系统为课程实验作品，饮食建议仅供参考</p>
       </div>
     </template>
+
+  <!-- 登录/注册模态框 -->
+  <div v-if="showAuthModal" class="modal-overlay" @click.self="showAuthModal = false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <span :class="{ active: authTab === 'login' }" @click="authTab = 'login'">登录</span>
+          <span :class="{ active: authTab === 'register' }" @click="authTab = 'register'">注册</span>
+        </div>
+        <span class="modal-close" @click="showAuthModal = false">✕</span>
+      </div>
+
+      <!-- 登录表单 -->
+      <div v-if="authTab === 'login'" class="modal-form">
+        <input v-model="loginForm.username" placeholder="请输入用户名" class="modal-input" />
+        <input v-model="loginForm.password" type="password" placeholder="请输入密码" class="modal-input" />
+        <p v-if="authError" class="auth-error">{{ authError }}</p>
+        <button class="btn btn-primary modal-btn" @click="handleLogin" :disabled="authLoading">
+          {{ authLoading ? '登录中...' : '登录' }}
+        </button>
+      </div>
+
+      <!-- 注册表单 -->
+      <div v-if="authTab === 'register'" class="modal-form">
+        <input v-model="registerForm.username" placeholder="请设置用户名（至少2字符）" class="modal-input" />
+        <input v-model="registerForm.password" type="password" placeholder="请设置密码（至少6字符）" class="modal-input" />
+        <input v-model="registerForm.confirmPassword" type="password" placeholder="请确认密码" class="modal-input" />
+        <p v-if="authError" class="auth-error">{{ authError }}</p>
+        <button class="btn btn-primary modal-btn" @click="handleRegister" :disabled="authLoading">
+          {{ authLoading ? '注册中...' : '注册' }}
+        </button>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
+import auth from '../auth.js'
 
 const loading = ref(false)
 const profile = ref(null)
@@ -165,7 +227,91 @@ const form = ref({
 const selectedTastes = ref([])
 const selectedTaboos = ref([])
 
+// ==================== 认证相关 ====================
+const showAuthModal = ref(false)
+const authTab = ref('login')
+const authLoading = ref(false)
+const authError = ref('')
+const avatarInput = ref(null)
+
+const loginForm = ref({ username: '', password: '' })
+const registerForm = ref({ username: '', password: '', confirmPassword: '' })
+
+async function handleLogin() {
+  authError.value = ''
+  if (!loginForm.value.username.trim() || !loginForm.value.password.trim()) {
+    authError.value = '请填写用户名和密码'
+    return
+  }
+  authLoading.value = true
+  try {
+    await auth.login(loginForm.value.username.trim(), loginForm.value.password)
+    showAuthModal.value = false
+    loginForm.value = { username: '', password: '' }
+    await fetchData()
+  } catch (e) {
+    authError.value = e.response?.data?.message || '登录失败，请重试'
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function handleRegister() {
+  authError.value = ''
+  const { username, password, confirmPassword } = registerForm.value
+  if (!username.trim() || !password.trim()) {
+    authError.value = '请填写用户名和密码'
+    return
+  }
+  if (username.trim().length < 2) {
+    authError.value = '用户名至少 2 个字符'
+    return
+  }
+  if (password.length < 6) {
+    authError.value = '密码至少 6 个字符'
+    return
+  }
+  if (password !== confirmPassword) {
+    authError.value = '两次密码不一致'
+    return
+  }
+  authLoading.value = true
+  try {
+    await auth.register(username.trim(), password)
+    showAuthModal.value = false
+    registerForm.value = { username: '', password: '', confirmPassword: '' }
+    await fetchData()
+  } catch (e) {
+    authError.value = e.response?.data?.message || '注册失败，请重试'
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function handleLogout() {
+  if (!confirm('确定要退出登录吗？')) return
+  await auth.logout()
+  profile.value = null
+}
+
+function triggerAvatarUpload() {
+  avatarInput.value?.click()
+}
+
+async function onAvatarChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  try {
+    await auth.uploadAvatar(file)
+  } catch (e) {
+    alert('头像上传失败')
+  } finally {
+    if (avatarInput.value) avatarInput.value.value = ''
+  }
+}
+
 async function fetchData() {
+  if (!auth.state.isLoggedIn) return
   loading.value = true
   try {
     const [profileRes, rulesRes] = await Promise.all([
@@ -421,5 +567,132 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: #bbb;
   font-size: 12px;
   line-height: 1.6;
+}
+
+/* 头像相关 */
+.avatar-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.avatar-wrapper .user-avatar {
+  width: 100%;
+  height: 100%;
+}
+.user-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar-camera {
+  position: absolute;
+  bottom: 0;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.logout-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  font-size: 15px;
+  color: #f44336;
+  border: 1px solid #f44336;
+  background: #fff;
+  border-radius: 8px;
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 16px 24px;
+  animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.modal-tabs {
+  display: flex;
+  gap: 20px;
+}
+.modal-tabs span {
+  font-size: 15px;
+  color: #999;
+  cursor: pointer;
+  padding-bottom: 4px;
+  transition: color 0.2s;
+}
+.modal-tabs span.active {
+  font-weight: 700;
+  font-size: 18px;
+  color: #4CAF50;
+  border-bottom: 2px solid #4CAF50;
+}
+.modal-close {
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+}
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.modal-input:focus {
+  border-color: #4CAF50;
+}
+.modal-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-error {
+  color: #f44336;
+  font-size: 13px;
+  margin: 0;
 }
 </style>
