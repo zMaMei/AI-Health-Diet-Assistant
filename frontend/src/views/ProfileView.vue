@@ -69,11 +69,34 @@
         <div class="card">
           <h3 class="card-title">😋 口味偏好</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="taste in tasteOptions" :key="taste"
-                    class="tag-btn"
+                    class="tag-btn preset-tag"
                     :class="{ selected: selectedTastes.includes(taste) }"
                     @click="toggleTaste(taste)">
               {{ taste }}
+            </button>
+            <!-- 自定义口味标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(taste, idx) in selectedTastes.filter(t => isCustomTaste(t))" :key="'c-taste-'+idx">
+              <span v-if="editingTag.group === 'taste' && editingTag.oldName === taste" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ taste }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditTaste(taste)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteTaste(taste)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingTaste" class="tag-input-wrapper">
+              <input v-model="tasteDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddTaste" @keyup.enter="confirmAddTaste" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddTaste">
+              + 自定义
             </button>
           </div>
         </div>
@@ -82,11 +105,34 @@
         <div class="card">
           <h3 class="card-title">🚫 忌口</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="t in tabooOptions" :key="t"
-                    class="tag-btn"
+                    class="tag-btn preset-tag"
                     :class="{ selected: selectedTaboos.includes(t) }"
                     @click="toggleTaboo(t)">
               {{ t }}
+            </button>
+            <!-- 自定义忌口标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(t, idx) in selectedTaboos.filter(t => isCustomTaboo(t))" :key="'c-taboo-'+idx">
+              <span v-if="editingTag.group === 'taboo' && editingTag.oldName === t" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ t }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditTaboo(t)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteTaboo(t)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingTaboo" class="tag-input-wrapper">
+              <input v-model="tabooDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddTaboo" @keyup.enter="confirmAddTaboo" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddTaboo">
+              + 自定义
             </button>
           </div>
         </div>
@@ -95,11 +141,34 @@
         <div class="card">
           <h3 class="card-title">⚠️ 慢性病/特殊饮食</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="w in warningOptions" :key="w"
-                    class="tag-btn"
-                    :class="{ selected: (form.warningProfile || '').includes(w) }"
+                    class="tag-btn preset-tag"
+                    :class="{ selected: selectedWarnings.includes(w) }"
                     @click="toggleWarning(w)">
               {{ w }}
+            </button>
+            <!-- 自定义病症标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(w, idx) in selectedWarnings.filter(w => isCustomWarning(w))" :key="'c-warn-'+idx">
+              <span v-if="editingTag.group === 'warning' && editingTag.oldName === w" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ w }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditWarning(w)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteWarning(w)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingWarning" class="tag-input-wrapper">
+              <input v-model="warningDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddWarning" @keyup.enter="confirmAddWarning" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddWarning">
+              + 自定义
             </button>
           </div>
         </div>
