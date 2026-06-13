@@ -189,6 +189,9 @@
               <span class="rule-unit">{{ nutrientUnits[rule.nutrientType] || '' }}</span>
             </div>
           </div>
+          <button class="btn btn-ai-analyze" @click="analyzeThreshold" :disabled="analyzingThreshold">
+            {{ analyzingThreshold ? '分析中...' : '🤖 AI 智能分析' }}
+          </button>
         </div>
 
         <!-- Save button -->
@@ -580,6 +583,7 @@ const warningDraft = ref('')
 
 // ==================== 编辑自定义标签状态 ====================
 const editingTag = ref({ group: '', oldName: '', draft: '' })
+const analyzingThreshold = ref(false)
 
 function startAddTaste()      { addingTaste.value = true; tasteDraft.value = '' }
 function startAddTaboo()      { addingTaboo.value = true; tabooDraft.value = '' }
@@ -677,6 +681,19 @@ function deleteWarning(tag) {
   const i = selectedWarnings.value.indexOf(tag)
   if (i >= 0) selectedWarnings.value.splice(i, 1)
   form.value.warningProfile = selectedWarnings.value.join(',')
+}
+
+async function analyzeThreshold() {
+  analyzingThreshold.value = true
+  try {
+    const res = await api.analyzeAlertRules()
+    alertRules.value = res.data.data || []
+    toast.show('AI 分析完成，可手动调整后保存')
+  } catch (e) {
+    toast.show('AI 分析失败，请稍后重试')
+  } finally {
+    analyzingThreshold.value = false
+  }
 }
 
 async function saveProfile() {
@@ -900,6 +917,27 @@ onMounted(fetchData)
 }
 input:checked + .slider { background: #4CAF50; }
 input:checked + .slider:before { transform: translateX(20px); }
+
+.btn-ai-analyze {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  font-size: 14px;
+  color: #4CAF50;
+  border: 1px dashed #4CAF50;
+  border-radius: 8px;
+  background: #f0faf0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ai-analyze:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-ai-analyze:not(:disabled):active {
+  background: #4CAF50;
+  color: #fff;
+}
 
 .save-btn {
   width: 100%;
