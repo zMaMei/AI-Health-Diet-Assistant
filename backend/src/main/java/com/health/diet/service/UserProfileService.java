@@ -39,6 +39,7 @@ public class UserProfileService {
             vo.setTaboo(profile.getTaboo());
             vo.setTastePreference(profile.getTastePreference());
             vo.setWarningProfile(profile.getWarningProfile());
+            vo.setGender(profile.getGender());
         });
 
         return vo;
@@ -58,6 +59,7 @@ public class UserProfileService {
         if (command.getTaboo() != null) profile.setTaboo(command.getTaboo());
         if (command.getTastePreference() != null) profile.setTastePreference(command.getTastePreference());
         if (command.getWarningProfile() != null) profile.setWarningProfile(command.getWarningProfile());
+        if (command.getGender() != null) profile.setGender(command.getGender());
 
         userProfileRepository.save(profile);
     }

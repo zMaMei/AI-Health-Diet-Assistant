@@ -11,6 +11,7 @@ public class UserProfileUpdateCommand {
     private String taboo;
     private String tastePreference;
     private String warningProfile;
+    private String gender;
 
     public Integer getAge() { return age; }
     public void setAge(Integer age) { this.age = age; }
@@ -26,4 +27,6 @@ public class UserProfileUpdateCommand {
     public void setTastePreference(String tastePreference) { this.tastePreference = tastePreference; }
     public String getWarningProfile() { return warningProfile; }
     public void setWarningProfile(String warningProfile) { this.warningProfile = warningProfile; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 }
