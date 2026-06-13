@@ -3,8 +3,10 @@ package com.health.diet.service;
 import com.health.diet.dto.command.LoginCommand;
 import com.health.diet.dto.command.RegisterCommand;
 import com.health.diet.dto.vo.LoginResultVO;
+import com.health.diet.entity.AlertRule;
 import com.health.diet.entity.User;
 import com.health.diet.entity.UserProfile;
+import com.health.diet.repository.AlertRuleRepository;
 import com.health.diet.repository.UserProfileRepository;
 import com.health.diet.repository.UserRepository;
 import org.slf4j.Logger;
@@ -14,9 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,14 +35,17 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final AlertRuleRepository alertRuleRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private static final Path AVATAR_DIR = Paths.get("uploads", "avatars");
 
     public AuthService(UserRepository userRepository,
-                       UserProfileRepository userProfileRepository) {
+                       UserProfileRepository userProfileRepository,
+                       AlertRuleRepository alertRuleRepository) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.alertRuleRepository = alertRuleRepository;
     }
 
     // ==================== 注册 ====================
@@ -68,6 +75,27 @@ public class AuthService {
         userProfileRepository.save(profile);
 
         log.info("新用户注册: id={}, username={}", user.getId(), username);
+
+        // 创建默认预警规则
+        AlertRule calorieRule = new AlertRule();
+        calorieRule.setUserId(user.getId());
+        calorieRule.setNutrientType("calorie");
+        calorieRule.setThreshold(new BigDecimal("2000"));
+        calorieRule.setEnabled(true);
+
+        AlertRule sugarRule = new AlertRule();
+        sugarRule.setUserId(user.getId());
+        sugarRule.setNutrientType("sugar");
+        sugarRule.setThreshold(new BigDecimal("50"));
+        sugarRule.setEnabled(true);
+
+        AlertRule sodiumRule = new AlertRule();
+        sodiumRule.setUserId(user.getId());
+        sodiumRule.setNutrientType("sodium");
+        sodiumRule.setThreshold(new BigDecimal("2400"));
+        sodiumRule.setEnabled(true);
+
+        alertRuleRepository.saveAll(List.of(calorieRule, sugarRule, sodiumRule));
 
         // 自动登录
         return buildLoginResult(user, null);
