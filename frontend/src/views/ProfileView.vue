@@ -237,6 +237,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
+import toast from '../toast.js'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 
@@ -267,6 +268,16 @@ const form = ref({
 
 const selectedTastes = ref([])
 const selectedTaboos = ref([])
+
+// 从 form.warningProfile 字符串派生的 selected 数组
+const selectedWarnings = ref([])
+
+// 更新 selectedWarnings（在 fetchData 中同步）
+function syncWarningFromForm() {
+  selectedWarnings.value = form.value.warningProfile
+    ? form.value.warningProfile.split(',').map(s => s.trim()).filter(Boolean)
+    : []
+}
 
 // ==================== 认证相关 ====================
 const showAuthModal = ref(false)
@@ -448,6 +459,7 @@ async function fetchData() {
     selectedTastes.value = p.tastePreference ? p.tastePreference.split(',').map(s => s.trim()).filter(Boolean) : []
     selectedTaboos.value = p.taboo ? p.taboo.split(',').map(s => s.trim()).filter(Boolean) : []
     form.value.warningProfile = p.warningProfile || ''
+    syncWarningFromForm()
 
     alertRules.value = rulesRes.data.data || []
   } catch (e) {
@@ -493,14 +505,128 @@ function toggleTaboo(taboo) {
 
 function toggleWarning(w) {
   if (w === '无') {
+    selectedWarnings.value = []
     form.value.warningProfile = ''
     return
   }
-  const current = form.value.warningProfile ? form.value.warningProfile.split(',') : []
-  const i = current.indexOf(w)
-  if (i >= 0) current.splice(i, 1)
-  else current.push(w)
-  form.value.warningProfile = current.join(',')
+  const i = selectedWarnings.value.indexOf(w)
+  if (i >= 0) selectedWarnings.value.splice(i, 1)
+  else selectedWarnings.value.push(w)
+  form.value.warningProfile = selectedWarnings.value.join(',')
+}
+
+// ==================== 判断自定义标签 ====================
+function isCustomTaste(tag) { return !tasteOptions.includes(tag) }
+function isCustomTaboo(tag) { return !tabooOptions.includes(tag) }
+function isCustomWarning(tag) { return !warningOptions.includes(tag) }
+
+// ==================== 添加自定义标签状态 ====================
+const addingTaste = ref(false)
+const addingTaboo = ref(false)
+const addingWarning = ref(false)
+const tasteDraft = ref('')
+const tabooDraft = ref('')
+const warningDraft = ref('')
+
+// ==================== 编辑自定义标签状态 ====================
+const editingTag = ref({ group: '', oldName: '', draft: '' })
+
+function startAddTaste()      { addingTaste.value = true; tasteDraft.value = '' }
+function startAddTaboo()      { addingTaboo.value = true; tabooDraft.value = '' }
+function startAddWarning()    { addingWarning.value = true; warningDraft.value = '' }
+
+function confirmAddTaste() {
+  const name = tasteDraft.value.trim()
+  addingTaste.value = false
+  if (!name) return
+  if (selectedTastes.value.includes(name)) {
+    toast.show('标签已存在')
+    return
+  }
+  selectedTastes.value.push(name)
+  tasteDraft.value = ''
+}
+
+function confirmAddTaboo() {
+  const name = tabooDraft.value.trim()
+  addingTaboo.value = false
+  if (!name) return
+  if (selectedTaboos.value.includes(name)) {
+    toast.show('标签已存在')
+    return
+  }
+  selectedTaboos.value.push(name)
+  tabooDraft.value = ''
+}
+
+function confirmAddWarning() {
+  const name = warningDraft.value.trim()
+  addingWarning.value = false
+  if (!name) return
+  if (selectedWarnings.value.includes(name)) {
+    toast.show('标签已存在')
+    return
+  }
+  selectedWarnings.value.push(name)
+  form.value.warningProfile = selectedWarnings.value.join(',')
+  warningDraft.value = ''
+}
+
+// ==================== 编辑自定义标签 ====================
+function startEditTaste(oldName) {
+  editingTag.value = { group: 'taste', oldName, draft: oldName }
+}
+function startEditTaboo(oldName) {
+  editingTag.value = { group: 'taboo', oldName, draft: oldName }
+}
+function startEditWarning(oldName) {
+  editingTag.value = { group: 'warning', oldName, draft: oldName }
+}
+
+function confirmEditTag() {
+  const { group, oldName, draft } = editingTag.value
+  const newName = draft.trim()
+  editingTag.value = { group: '', oldName: '', draft: '' }
+  if (!newName || newName === oldName) return
+
+  if (group === 'taste') {
+    if (selectedTastes.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedTastes.value.indexOf(oldName)
+    if (i >= 0) selectedTastes.value[i] = newName
+  } else if (group === 'taboo') {
+    if (selectedTaboos.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedTaboos.value.indexOf(oldName)
+    if (i >= 0) selectedTaboos.value[i] = newName
+  } else if (group === 'warning') {
+    if (selectedWarnings.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedWarnings.value.indexOf(oldName)
+    if (i >= 0) selectedWarnings.value[i] = newName
+    form.value.warningProfile = selectedWarnings.value.join(',')
+  }
+}
+
+function cancelEditTag() {
+  editingTag.value = { group: '', oldName: '', draft: '' }
+}
+
+// ==================== 删除自定义标签 ====================
+function deleteTaste(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedTastes.value.indexOf(tag)
+  if (i >= 0) selectedTastes.value.splice(i, 1)
+}
+
+function deleteTaboo(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedTaboos.value.indexOf(tag)
+  if (i >= 0) selectedTaboos.value.splice(i, 1)
+}
+
+function deleteWarning(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedWarnings.value.indexOf(tag)
+  if (i >= 0) selectedWarnings.value.splice(i, 1)
+  form.value.warningProfile = selectedWarnings.value.join(',')
 }
 
 async function saveProfile() {
