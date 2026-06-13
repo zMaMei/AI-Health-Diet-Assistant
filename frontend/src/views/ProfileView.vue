@@ -805,6 +805,72 @@ onMounted(fetchData)
 }
 .tag-btn:active { transform: scale(0.95); }
 
+/* 自定义标签 */
+.tag-btn.custom-tag {
+  border-style: dashed;
+  border-color: #aaa;
+  position: relative;
+}
+.tag-btn.custom-tag.selected {
+  border-color: #4CAF50;
+  padding-right: 48px; /* 为 ✎× 留空间 */
+}
+
+/* 操作图标（✎ 编辑 / × 删除） */
+.tag-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tag-edit, .tag-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+.tag-edit { background: #4CAF50; }
+.tag-delete { background: #f44336; }
+.tag-edit:active, .tag-delete:active { opacity: 0.6; }
+
+/* 内联输入框（新增/编辑自定义标签） */
+.tag-input-wrapper {
+  display: inline-block;
+  vertical-align: middle;
+}
+.tag-input {
+  padding: 6px 14px;
+  border: 1px solid #4CAF50;
+  border-radius: 16px;
+  font-size: 13px;
+  outline: none;
+  width: 130px;
+  background: #fafffe;
+  transition: border-color 0.2s;
+}
+.tag-input:focus {
+  border-color: #2E7D32;
+}
+
+/* + 自定义 添加按钮 */
+.tag-add-btn {
+  border-style: dashed;
+  color: #4CAF50;
+  border-color: #4CAF50;
+  background: #f0faf0;
+}
+.tag-add-btn:active {
+  background: #4CAF50;
+  color: #fff;
+}
+
 .alert-rule {
   padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
