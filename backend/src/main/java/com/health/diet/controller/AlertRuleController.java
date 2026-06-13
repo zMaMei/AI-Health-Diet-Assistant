@@ -53,4 +53,10 @@ public class AlertRuleController {
         Long userId = (Long) request.getAttribute("userId");
         return ApiResponse.success(alertService.checkAfterRecordSaved(userId, date));
     }
+
+    @PostMapping("/analyze")
+    public ApiResponse<List<AlertRuleVO>> analyze(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return ApiResponse.success(alertService.analyzeAndApply(userId));
+    }
 }
