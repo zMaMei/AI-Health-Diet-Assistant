@@ -205,20 +205,6 @@
         登录后可设置<br>健康目标 · 个人资料 · 预警阈值
       </div>
 
-      <!-- Privacy notice -->
-      <div class="card privacy-card">
-        <h3 class="card-title">🔒 隐私说明</h3>
-        <div class="privacy-content">
-          <p>本系统为《AI智能个人健康饮食助手》课程实验作品。我们郑重承诺：</p>
-          <ul>
-            <li>仅采集完成课程实验必需的数据（年龄、身高、体重、饮食目标、口味偏好、忌口标签）</li>
-            <li>不采集真实姓名、手机号、身份证、支付信息等高敏个人信息</li>
-            <li>所有健康数据仅存储在本地实验数据库，不对外泄露或共享</li>
-            <li>拍照和语音数据仅用于 AI 识别，处理完成后不长期留存原始文件</li>
-            <li>饮食建议和健康评分仅供参考，不替代专业医生诊断</li>
-          </ul>
-        </div>
-      </div>
 
       <!-- App info -->
       <div class="app-info">
@@ -922,22 +908,6 @@ input:checked + .slider:before { transform: translateX(20px); }
   font-size: 16px;
 }
 
-.privacy-card {
-  background: #FAFAFA;
-  border: 1px solid #e0e0e0;
-}
-.privacy-content {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.7;
-}
-.privacy-content ul {
-  padding-left: 18px;
-  margin-top: 6px;
-}
-.privacy-content ul li {
-  margin-bottom: 4px;
-}
 
 .app-info {
   text-align: center;
