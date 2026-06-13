@@ -320,7 +320,7 @@ const nicknameDraft = ref('')
 
 const tasteOptions = ['清淡', '中式', '西式', '日式', '辣味', '酸甜', '咸鲜']
 const tabooOptions = ['海鲜', '花生', '牛奶', '鸡蛋', '豆制品', ' gluten', '辛辣']
-const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风', '无']
+const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风']
 
 const nutrientLabels = { calorie: '每日热量上限', sugar: '每日糖分上限', sodium: '每日钠上限' }
 const nutrientUnits = { calorie: 'kcal', sugar: 'g', sodium: 'mg' }
@@ -573,11 +573,6 @@ function toggleTaboo(taboo) {
 }
 
 function toggleWarning(w) {
-  if (w === '无') {
-    selectedWarnings.value = []
-    form.value.warningProfile = ''
-    return
-  }
   const i = selectedWarnings.value.indexOf(w)
   if (i >= 0) selectedWarnings.value.splice(i, 1)
   else selectedWarnings.value.push(w)
