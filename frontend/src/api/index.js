@@ -21,10 +21,12 @@ api.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
-      auth.logout()
-      if (window.location.pathname !== '/profile') {
-        toast.show('请先在"我的"页面登录')
-      }
+      try {
+        auth.logout()
+        if (window.location.hash !== '#/profile') {
+          toast.show('请先在"我的"页面登录')
+        }
+      } catch (ignored) {}
     }
     return Promise.reject(error)
   }

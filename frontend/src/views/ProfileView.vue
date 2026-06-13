@@ -464,7 +464,9 @@ async function handleLogin() {
     loginForm.value = { username: '', password: '' }
     await fetchData()
   } catch (e) {
-    authError.value = e.response?.data?.message || '登录失败，请重试'
+    const msg = e?.response?.data?.message
+    authError.value = msg || '登录失败，请重试'
+    console.error('登录失败', e)
   } finally {
     authLoading.value = false
   }
@@ -496,7 +498,9 @@ async function handleRegister() {
     registerForm.value = { username: '', password: '', confirmPassword: '' }
     await fetchData()
   } catch (e) {
-    authError.value = e.response?.data?.message || '注册失败，请重试'
+    const msg = e?.response?.data?.message
+    authError.value = msg || '注册失败，请重试'
+    console.error('注册失败', e)
   } finally {
     authLoading.value = false
   }
