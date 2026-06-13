@@ -42,6 +42,7 @@ CREATE TABLE `user_profile` (
     `taboo`            VARCHAR(255) DEFAULT NULL            COMMENT '忌口标签列表',
     `taste_preference` VARCHAR(255) DEFAULT NULL            COMMENT '口味偏好标签',
     `warning_profile`  VARCHAR(255) DEFAULT NULL            COMMENT '慢性病或特殊饮食标签',
+    `gender`           VARCHAR(8)   DEFAULT NULL            COMMENT '性别（男/女）',
     `avatar_url`       VARCHAR(255) DEFAULT NULL            COMMENT '头像本地路径',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_id` (`user_id`),
@@ -216,8 +217,8 @@ INSERT INTO `users` (`id`, `nickname`, `username`, `password_hash`, `created_at`
 VALUES (1, '健康达人', 'demo', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW(), NOW());
 
 -- 用户健康档案
-INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`, `avatar_url`)
-VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', NULL);
+INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`, `gender`, `avatar_url`)
+VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', '男', NULL);
 
 -- 标准食物营养基线（每单位）
 INSERT INTO `food_item` (`id`, `name`, `category`, `unit`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`) VALUES

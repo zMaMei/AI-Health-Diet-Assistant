@@ -168,9 +168,12 @@ public class AlertService {
         String warning = profile.getWarningProfile() != null && !profile.getWarningProfile().isEmpty()
                 ? profile.getWarningProfile() : "无特殊疾病";
 
+        String gender = profile.getGender() != null ? profile.getGender() : "未知";
+
         String prompt = String.format("""
             你是一位专业的营养师。请根据以下用户档案，综合分给出每日摄入上限建议。
             - 年龄：%s 岁
+            - 性别：%s
             - 身高：%s cm
             - 体重：%s kg
             - BMI：%s
@@ -183,7 +186,7 @@ public class AlertService {
             - calorie：每日热量上限
             - sugar：每日糖分上限
             - sodium：每日钠上限
-            """, age, height, weight, bmiStr, goal, warning);
+            """, age, gender, height, weight, bmiStr, goal, warning);
 
         ThresholdAnalysisAdapter.ThresholdResult result = thresholdAnalysisAdapter.analyze(prompt);
 
