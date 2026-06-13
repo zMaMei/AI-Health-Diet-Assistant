@@ -9,6 +9,11 @@ import com.health.diet.entity.AlertRule;
 import com.health.diet.entity.DietRecord;
 import com.health.diet.repository.AlertRuleRepository;
 import com.health.diet.repository.DietRecordRepository;
+import com.health.diet.adapter.ThresholdAnalysisAdapter;
+import com.health.diet.entity.UserProfile;
+import com.health.diet.repository.UserProfileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -24,6 +29,8 @@ public class AlertService {
 
     private final AlertRuleRepository alertRuleRepository;
     private final DietRecordRepository dietRecordRepository;
+    private final ThresholdAnalysisAdapter thresholdAnalysisAdapter;
+    private final UserProfileRepository userProfileRepository;
 
     private static final Map<String, String> NUTRIENT_NAMES = Map.of(
             "calorie", "热量",
@@ -37,10 +44,16 @@ public class AlertService {
             "sodium", "建议减少盐分摄入，多吃新鲜蔬果"
     );
 
+    private static final Logger log = LoggerFactory.getLogger(AlertService.class);
+
     public AlertService(AlertRuleRepository alertRuleRepository,
-                        DietRecordRepository dietRecordRepository) {
+                        DietRecordRepository dietRecordRepository,
+                        ThresholdAnalysisAdapter thresholdAnalysisAdapter,
+                        UserProfileRepository userProfileRepository) {
         this.alertRuleRepository = alertRuleRepository;
         this.dietRecordRepository = dietRecordRepository;
+        this.thresholdAnalysisAdapter = thresholdAnalysisAdapter;
+        this.userProfileRepository = userProfileRepository;
     }
 
     public Long createRule(AlertRuleCreateCommand command) {
@@ -127,6 +140,81 @@ public class AlertService {
         vo.setThreshold(rule.getThreshold());
         vo.setEnabled(rule.getEnabled());
         return vo;
+    }
+
+    /**
+     * AI 分析预警阈值并更新/创建规则。
+     * @param userId 用户 ID
+     * @return 更新后的规则列表
+     */
+    public List<AlertRuleVO> analyzeAndApply(Long userId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("请先完善个人资料"));
+
+        // 计算 BMI
+        String bmiStr = "未知";
+        if (profile.getHeightCm() != null && profile.getWeightKg() != null
+                && profile.getHeightCm().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal heightM = profile.getHeightCm().divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            BigDecimal bmi = profile.getWeightKg().divide(heightM.pow(2), 1, RoundingMode.HALF_UP);
+            bmiStr = bmi.toString();
+        }
+
+        // 构造 prompt
+        String age = profile.getAge() != null ? profile.getAge().toString() : "未知";
+        String height = profile.getHeightCm() != null ? profile.getHeightCm().toString() : "未知";
+        String weight = profile.getWeightKg() != null ? profile.getWeightKg().toString() : "未知";
+        String goal = profile.getGoal() != null ? profile.getGoal() : "均衡";
+        String warning = profile.getWarningProfile() != null && !profile.getWarningProfile().isEmpty()
+                ? profile.getWarningProfile() : "无特殊疾病";
+
+        String gender = profile.getGender() != null ? profile.getGender() : "未知";
+
+        String prompt = String.format("""
+            你是一位专业的营养师。请根据以下用户档案，综合分给出每日摄入上限建议。
+            - 年龄：%s 岁
+            - 性别：%s
+            - 身高：%s cm
+            - 体重：%s kg
+            - BMI：%s
+            - 健康目标：%s
+            - 慢性病/特殊饮食：%s
+
+            请严格以 JSON 格式返回，不要包含其他文字：
+            {"calorie": 数字(kcal), "sugar": 数字(g), "sodium": 数字(mg)}
+            其中：
+            - calorie：每日热量上限
+            - sugar：每日糖分上限
+            - sodium：每日钠上限
+            """, age, gender, height, weight, bmiStr, goal, warning);
+
+        ThresholdAnalysisAdapter.ThresholdResult result = thresholdAnalysisAdapter.analyze(prompt);
+
+        // Upsert 规则
+        List<AlertRule> existingRules = alertRuleRepository.findByUserId(userId);
+        upsertRule(existingRules, userId, "calorie", result.calorie());
+        upsertRule(existingRules, userId, "sugar", result.sugar());
+        upsertRule(existingRules, userId, "sodium", result.sodium());
+
+        log.info("AI 预警阈值分析完成: userId={}, calorie={}, sugar={}, sodium={}",
+                userId, result.calorie(), result.sugar(), result.sodium());
+
+        return listRules(userId);
+    }
+
+    private void upsertRule(List<AlertRule> existing, Long userId, String nutrientType, BigDecimal threshold) {
+        AlertRule rule = existing.stream()
+                .filter(r -> r.getNutrientType().equals(nutrientType))
+                .findFirst()
+                .orElseGet(() -> {
+                    AlertRule newRule = new AlertRule();
+                    newRule.setUserId(userId);
+                    newRule.setNutrientType(nutrientType);
+                    newRule.setEnabled(true);
+                    return newRule;
+                });
+        rule.setThreshold(threshold);
+        alertRuleRepository.save(rule);
     }
 
     private BigDecimal nvl(BigDecimal val) {

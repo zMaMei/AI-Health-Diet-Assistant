@@ -63,17 +63,48 @@
             <label>体重(kg)</label>
             <input type="number" v-model.number="form.weightKg" placeholder="kg" step="0.1">
           </div>
+          <div class="form-row">
+            <label>性别</label>
+            <select v-model="form.gender">
+              <option value="">未设置</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
         </div>
 
         <!-- Preferences -->
         <div class="card">
           <h3 class="card-title">😋 口味偏好</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="taste in tasteOptions" :key="taste"
-                    class="tag-btn"
+                    class="tag-btn preset-tag"
                     :class="{ selected: selectedTastes.includes(taste) }"
                     @click="toggleTaste(taste)">
               {{ taste }}
+            </button>
+            <!-- 自定义口味标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(taste, idx) in selectedTastes.filter(t => isCustomTaste(t))" :key="'c-taste-'+idx">
+              <span v-if="editingTag.group === 'taste' && editingTag.oldName === taste" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ taste }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditTaste(taste)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteTaste(taste)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingTaste" class="tag-input-wrapper">
+              <input v-model="tasteDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddTaste" @keyup.enter="confirmAddTaste" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddTaste">
+              + 自定义
             </button>
           </div>
         </div>
@@ -82,11 +113,34 @@
         <div class="card">
           <h3 class="card-title">🚫 忌口</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="t in tabooOptions" :key="t"
-                    class="tag-btn"
+                    class="tag-btn preset-tag"
                     :class="{ selected: selectedTaboos.includes(t) }"
                     @click="toggleTaboo(t)">
               {{ t }}
+            </button>
+            <!-- 自定义忌口标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(t, idx) in selectedTaboos.filter(t => isCustomTaboo(t))" :key="'c-taboo-'+idx">
+              <span v-if="editingTag.group === 'taboo' && editingTag.oldName === t" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ t }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditTaboo(t)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteTaboo(t)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingTaboo" class="tag-input-wrapper">
+              <input v-model="tabooDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddTaboo" @keyup.enter="confirmAddTaboo" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddTaboo">
+              + 自定义
             </button>
           </div>
         </div>
@@ -95,11 +149,34 @@
         <div class="card">
           <h3 class="card-title">⚠️ 慢性病/特殊饮食</h3>
           <div class="tag-selector">
+            <!-- 预设标签 -->
             <button v-for="w in warningOptions" :key="w"
-                    class="tag-btn"
-                    :class="{ selected: (form.warningProfile || '').includes(w) }"
+                    class="tag-btn preset-tag"
+                    :class="{ selected: selectedWarnings.includes(w) }"
                     @click="toggleWarning(w)">
               {{ w }}
+            </button>
+            <!-- 自定义病症标签（始终选中，不参与 toggle，仅通过 × 删除） -->
+            <template v-for="(w, idx) in selectedWarnings.filter(w => isCustomWarning(w))" :key="'c-warn-'+idx">
+              <span v-if="editingTag.group === 'warning' && editingTag.oldName === w" class="tag-input-wrapper">
+                <input v-model="editingTag.draft" class="tag-input"
+                       @blur="confirmEditTag" @keyup.enter="confirmEditTag" />
+              </span>
+              <span v-else class="tag-btn custom-tag selected">
+                {{ w }}
+                <span class="tag-actions">
+                  <span class="tag-edit" @click.stop="startEditWarning(w)">✎</span>
+                  <span class="tag-delete" @click.stop="deleteWarning(w)">×</span>
+                </span>
+              </span>
+            </template>
+            <!-- + 自定义 或输入框 -->
+            <span v-if="addingWarning" class="tag-input-wrapper">
+              <input v-model="warningDraft" class="tag-input" placeholder="输入自定义标签"
+                     @blur="confirmAddWarning" @keyup.enter="confirmAddWarning" />
+            </span>
+            <button v-else class="tag-btn tag-add-btn" @click="startAddWarning">
+              + 自定义
             </button>
           </div>
         </div>
@@ -120,6 +197,9 @@
               <span class="rule-unit">{{ nutrientUnits[rule.nutrientType] || '' }}</span>
             </div>
           </div>
+          <button class="btn btn-ai-analyze" @click="analyzeThreshold" :disabled="analyzingThreshold">
+            {{ analyzingThreshold ? '分析中...' : '🤖 AI 智能分析' }}
+          </button>
         </div>
 
         <!-- Save button -->
@@ -136,20 +216,6 @@
         登录后可设置<br>健康目标 · 个人资料 · 预警阈值
       </div>
 
-      <!-- Privacy notice -->
-      <div class="card privacy-card">
-        <h3 class="card-title">🔒 隐私说明</h3>
-        <div class="privacy-content">
-          <p>本系统为《AI智能个人健康饮食助手》课程实验作品。我们郑重承诺：</p>
-          <ul>
-            <li>仅采集完成课程实验必需的数据（年龄、身高、体重、饮食目标、口味偏好、忌口标签）</li>
-            <li>不采集真实姓名、手机号、身份证、支付信息等高敏个人信息</li>
-            <li>所有健康数据仅存储在本地实验数据库，不对外泄露或共享</li>
-            <li>拍照和语音数据仅用于 AI 识别，处理完成后不长期留存原始文件</li>
-            <li>饮食建议和健康评分仅供参考，不替代专业医生诊断</li>
-          </ul>
-        </div>
-      </div>
 
       <!-- App info -->
       <div class="app-info">
@@ -237,6 +303,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
+import toast from '../toast.js'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 
@@ -250,7 +317,7 @@ const nicknameDraft = ref('')
 
 const tasteOptions = ['清淡', '中式', '西式', '日式', '辣味', '酸甜', '咸鲜']
 const tabooOptions = ['海鲜', '花生', '牛奶', '鸡蛋', '豆制品', ' gluten', '辛辣']
-const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风', '无']
+const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风']
 
 const nutrientLabels = { calorie: '每日热量上限', sugar: '每日糖分上限', sodium: '每日钠上限' }
 const nutrientUnits = { calorie: 'kcal', sugar: 'g', sodium: 'mg' }
@@ -263,10 +330,21 @@ const form = ref({
   tastePreference: '',
   taboo: '',
   warningProfile: '',
+  gender: '',
 })
 
 const selectedTastes = ref([])
 const selectedTaboos = ref([])
+
+// 从 form.warningProfile 字符串派生的 selected 数组
+const selectedWarnings = ref([])
+
+// 更新 selectedWarnings（在 fetchData 中同步）
+function syncWarningFromForm() {
+  selectedWarnings.value = form.value.warningProfile
+    ? form.value.warningProfile.split(',').map(s => s.trim()).filter(Boolean)
+    : []
+}
 
 // ==================== 认证相关 ====================
 const showAuthModal = ref(false)
@@ -386,7 +464,9 @@ async function handleLogin() {
     loginForm.value = { username: '', password: '' }
     await fetchData()
   } catch (e) {
-    authError.value = e.response?.data?.message || '登录失败，请重试'
+    const msg = e?.response?.data?.message
+    authError.value = msg || '登录失败，请重试'
+    console.error('登录失败', e)
   } finally {
     authLoading.value = false
   }
@@ -418,7 +498,9 @@ async function handleRegister() {
     registerForm.value = { username: '', password: '', confirmPassword: '' }
     await fetchData()
   } catch (e) {
-    authError.value = e.response?.data?.message || '注册失败，请重试'
+    const msg = e?.response?.data?.message
+    authError.value = msg || '注册失败，请重试'
+    console.error('注册失败', e)
   } finally {
     authLoading.value = false
   }
@@ -448,6 +530,8 @@ async function fetchData() {
     selectedTastes.value = p.tastePreference ? p.tastePreference.split(',').map(s => s.trim()).filter(Boolean) : []
     selectedTaboos.value = p.taboo ? p.taboo.split(',').map(s => s.trim()).filter(Boolean) : []
     form.value.warningProfile = p.warningProfile || ''
+    form.value.gender = p.gender || ''
+    syncWarningFromForm()
 
     alertRules.value = rulesRes.data.data || []
   } catch (e) {
@@ -492,15 +576,148 @@ function toggleTaboo(taboo) {
 }
 
 function toggleWarning(w) {
-  if (w === '无') {
-    form.value.warningProfile = ''
+  const i = selectedWarnings.value.indexOf(w)
+  if (i >= 0) selectedWarnings.value.splice(i, 1)
+  else selectedWarnings.value.push(w)
+  form.value.warningProfile = selectedWarnings.value.join(',')
+}
+
+// ==================== 判断自定义标签 ====================
+function isCustomTaste(tag) { return !tasteOptions.includes(tag) }
+function isCustomTaboo(tag) { return !tabooOptions.includes(tag) }
+function isCustomWarning(tag) { return !warningOptions.includes(tag) }
+
+// ==================== 添加自定义标签状态 ====================
+const addingTaste = ref(false)
+const addingTaboo = ref(false)
+const addingWarning = ref(false)
+const tasteDraft = ref('')
+const tabooDraft = ref('')
+const warningDraft = ref('')
+
+// ==================== 编辑自定义标签状态 ====================
+const editingTag = ref({ group: '', oldName: '', draft: '' })
+const analyzingThreshold = ref(false)
+
+function startAddTaste()      { addingTaste.value = true; tasteDraft.value = '' }
+function startAddTaboo()      { addingTaboo.value = true; tabooDraft.value = '' }
+function startAddWarning()    { addingWarning.value = true; warningDraft.value = '' }
+
+function confirmAddTaste() {
+  const name = tasteDraft.value.trim()
+  addingTaste.value = false
+  if (!name) return
+  if (selectedTastes.value.includes(name)) {
+    toast.show('标签已存在')
     return
   }
-  const current = form.value.warningProfile ? form.value.warningProfile.split(',') : []
-  const i = current.indexOf(w)
-  if (i >= 0) current.splice(i, 1)
-  else current.push(w)
-  form.value.warningProfile = current.join(',')
+  selectedTastes.value.push(name)
+  tasteDraft.value = ''
+}
+
+function confirmAddTaboo() {
+  const name = tabooDraft.value.trim()
+  addingTaboo.value = false
+  if (!name) return
+  if (selectedTaboos.value.includes(name)) {
+    toast.show('标签已存在')
+    return
+  }
+  selectedTaboos.value.push(name)
+  tabooDraft.value = ''
+}
+
+function confirmAddWarning() {
+  const name = warningDraft.value.trim()
+  addingWarning.value = false
+  if (!name) return
+  if (selectedWarnings.value.includes(name)) {
+    toast.show('标签已存在')
+    return
+  }
+  selectedWarnings.value.push(name)
+  form.value.warningProfile = selectedWarnings.value.join(',')
+  warningDraft.value = ''
+}
+
+// ==================== 编辑自定义标签 ====================
+function startEditTaste(oldName) {
+  editingTag.value = { group: 'taste', oldName, draft: oldName }
+}
+function startEditTaboo(oldName) {
+  editingTag.value = { group: 'taboo', oldName, draft: oldName }
+}
+function startEditWarning(oldName) {
+  editingTag.value = { group: 'warning', oldName, draft: oldName }
+}
+
+function confirmEditTag() {
+  const { group, oldName, draft } = editingTag.value
+  const newName = draft.trim()
+  editingTag.value = { group: '', oldName: '', draft: '' }
+  if (!newName || newName === oldName) return
+
+  if (group === 'taste') {
+    if (selectedTastes.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedTastes.value.indexOf(oldName)
+    if (i >= 0) selectedTastes.value[i] = newName
+  } else if (group === 'taboo') {
+    if (selectedTaboos.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedTaboos.value.indexOf(oldName)
+    if (i >= 0) selectedTaboos.value[i] = newName
+  } else if (group === 'warning') {
+    if (selectedWarnings.value.includes(newName)) { toast.show('标签已存在'); return }
+    const i = selectedWarnings.value.indexOf(oldName)
+    if (i >= 0) selectedWarnings.value[i] = newName
+    form.value.warningProfile = selectedWarnings.value.join(',')
+  }
+}
+
+function cancelEditTag() {
+  editingTag.value = { group: '', oldName: '', draft: '' }
+}
+
+// ==================== 删除自定义标签 ====================
+function deleteTaste(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedTastes.value.indexOf(tag)
+  if (i >= 0) selectedTastes.value.splice(i, 1)
+}
+
+function deleteTaboo(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedTaboos.value.indexOf(tag)
+  if (i >= 0) selectedTaboos.value.splice(i, 1)
+}
+
+function deleteWarning(tag) {
+  if (!confirm(`确定删除"${tag}"吗？`)) return
+  const i = selectedWarnings.value.indexOf(tag)
+  if (i >= 0) selectedWarnings.value.splice(i, 1)
+  form.value.warningProfile = selectedWarnings.value.join(',')
+}
+
+async function analyzeThreshold() {
+  analyzingThreshold.value = true
+  try {
+    await api.updateProfile({
+      goal: form.value.goal,
+      age: form.value.age,
+      heightCm: form.value.heightCm,
+      weightKg: form.value.weightKg,
+      gender: form.value.gender,
+      tastePreference: selectedTastes.value.join(','),
+      taboo: selectedTaboos.value.join(','),
+      warningProfile: form.value.warningProfile,
+    })
+    const res = await api.analyzeAlertRules()
+    alertRules.value = res.data.data || []
+    toast.show('AI 分析完成，可手动调整后保存')
+  } catch (e) {
+    toast.show('AI 分析失败，请稍后重试')
+  } finally {
+    analyzingThreshold.value = false
+  }
 }
 
 async function saveProfile() {
@@ -514,7 +731,7 @@ async function saveProfile() {
       taboo: selectedTaboos.value.join(','),
       warningProfile: form.value.warningProfile,
     })
-    alert('保存成功！')
+    toast.show('保存成功')
   } catch (e) {
     alert('保存失败')
   }
@@ -610,6 +827,75 @@ onMounted(fetchData)
 }
 .tag-btn:active { transform: scale(0.95); }
 
+/* 自定义标签 */
+.tag-btn.custom-tag {
+  border-style: dashed;
+  border-color: #aaa;
+  position: relative;
+}
+.tag-btn.custom-tag.selected {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  border-color: #4CAF50;
+  padding-right: 48px; /* 为 ✎× 留空间 */
+}
+
+/* 操作图标（✎ 编辑 / × 删除） */
+.tag-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tag-edit, .tag-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+.tag-edit { background: #4CAF50; }
+.tag-delete { background: #f44336; }
+.tag-edit:active, .tag-delete:active { opacity: 0.6; }
+
+/* 内联输入框（新增/编辑自定义标签） */
+.tag-input-wrapper {
+  display: inline-block;
+  vertical-align: middle;
+}
+.tag-input {
+  padding: 6px 14px;
+  border: 1px solid #4CAF50;
+  border-radius: 16px;
+  font-size: 13px;
+  outline: none;
+  width: 130px;
+  background: #fafffe;
+  transition: border-color 0.2s;
+}
+.tag-input:focus {
+  border-color: #2E7D32;
+}
+
+/* + 自定义 添加按钮 */
+.tag-add-btn {
+  border-style: dashed;
+  color: #4CAF50;
+  border-color: #4CAF50;
+  background: #f0faf0;
+}
+.tag-add-btn:active {
+  background: #4CAF50;
+  color: #fff;
+}
+
 .alert-rule {
   padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
@@ -659,6 +945,27 @@ onMounted(fetchData)
 input:checked + .slider { background: #4CAF50; }
 input:checked + .slider:before { transform: translateX(20px); }
 
+.btn-ai-analyze {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  font-size: 14px;
+  color: #4CAF50;
+  border: 1px dashed #4CAF50;
+  border-radius: 8px;
+  background: #f0faf0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ai-analyze:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-ai-analyze:not(:disabled):active {
+  background: #4CAF50;
+  color: #fff;
+}
+
 .save-btn {
   width: 100%;
   margin-top: 16px;
@@ -666,22 +973,6 @@ input:checked + .slider:before { transform: translateX(20px); }
   font-size: 16px;
 }
 
-.privacy-card {
-  background: #FAFAFA;
-  border: 1px solid #e0e0e0;
-}
-.privacy-content {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.7;
-}
-.privacy-content ul {
-  padding-left: 18px;
-  margin-top: 6px;
-}
-.privacy-content ul li {
-  margin-bottom: 4px;
-}
 
 .app-info {
   text-align: center;

@@ -34,6 +34,9 @@ public class UserProfile {
     @Column(name = "warning_profile", length = 255)
     private String warningProfile;
 
+    @Column(length = 8)
+    private String gender;
+
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
 
@@ -71,5 +74,7 @@ public class UserProfile {
     public void setTaboo(String taboo) { this.taboo = taboo; }
     public void setTastePreference(String tastePreference) { this.tastePreference = tastePreference; }
     public void setWarningProfile(String warningProfile) { this.warningProfile = warningProfile; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 }
