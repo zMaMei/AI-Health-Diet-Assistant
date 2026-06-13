@@ -63,6 +63,14 @@
             <label>体重(kg)</label>
             <input type="number" v-model.number="form.weightKg" placeholder="kg" step="0.1">
           </div>
+          <div class="form-row">
+            <label>性别</label>
+            <select v-model="form.gender">
+              <option value="">未设置</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
         </div>
 
         <!-- Preferences -->
@@ -322,6 +330,7 @@ const form = ref({
   tastePreference: '',
   taboo: '',
   warningProfile: '',
+  gender: '',
 })
 
 const selectedTastes = ref([])
@@ -517,6 +526,7 @@ async function fetchData() {
     selectedTastes.value = p.tastePreference ? p.tastePreference.split(',').map(s => s.trim()).filter(Boolean) : []
     selectedTaboos.value = p.taboo ? p.taboo.split(',').map(s => s.trim()).filter(Boolean) : []
     form.value.warningProfile = p.warningProfile || ''
+    form.value.gender = p.gender || ''
     syncWarningFromForm()
 
     alertRules.value = rulesRes.data.data || []
@@ -686,6 +696,16 @@ function deleteWarning(tag) {
 async function analyzeThreshold() {
   analyzingThreshold.value = true
   try {
+    await api.updateProfile({
+      goal: form.value.goal,
+      age: form.value.age,
+      heightCm: form.value.heightCm,
+      weightKg: form.value.weightKg,
+      gender: form.value.gender,
+      tastePreference: selectedTastes.value.join(','),
+      taboo: selectedTaboos.value.join(','),
+      warningProfile: form.value.warningProfile,
+    })
     const res = await api.analyzeAlertRules()
     alertRules.value = res.data.data || []
     toast.show('AI 分析完成，可手动调整后保存')
@@ -707,7 +727,7 @@ async function saveProfile() {
       taboo: selectedTaboos.value.join(','),
       warningProfile: form.value.warningProfile,
     })
-    alert('保存成功！')
+    toast.show('保存成功')
   } catch (e) {
     alert('保存失败')
   }
@@ -810,6 +830,9 @@ onMounted(fetchData)
   position: relative;
 }
 .tag-btn.custom-tag.selected {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
   border-color: #4CAF50;
   padding-right: 48px; /* 为 ✎× 留空间 */
 }
