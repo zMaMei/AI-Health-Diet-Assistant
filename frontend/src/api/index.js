@@ -106,6 +106,9 @@ export default {
   updateAlertRule(ruleId, data) {
     return api.put(`/alert-rules/${ruleId}`, data)
   },
+  analyzeAlertRules() {
+    return api.post('/alert-rules/analyze', {}, { timeout: 20000 })
+  },
   checkAlerts(date) {
     return api.get('/alert-rules/check', { params: { date } })
   },
