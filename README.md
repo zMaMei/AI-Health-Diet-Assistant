@@ -11,7 +11,7 @@ AI智能个人健康饮食助手是一款面向普通用户的移动端健康饮
 
 - **后端：** Java 17 + Spring Boot 3.2 + Spring Data JPA + H2/MySQL
 - **前端：** Vue 3 + Vite + Vue Router + Axios
-- **数据库：** H2（开发演示）/ MySQL 8.x（可选）
+- **数据库：** MySQL 8.x（可选）
 
 ## 项目结构
 
