@@ -265,16 +265,14 @@ async function showSourceDetail(nutrient) {
   try {
     const res = await api.getDietRecords(currentDate.value)
     const allRecords = res || []
-    // Extract records that have nutrition data for this nutrient, grouped by food
-    const keyTotal = nutrient.key + 'Total'
     sourceDetailItems.value = allRecords
-      .filter(r => r[keyTotal] !== undefined && r[keyTotal] !== null)
+      .filter(r => r[nutrient.key] !== undefined && r[nutrient.key] !== null)
       .map(r => ({
         foodName: r.foodName || r.food_name,
         mealType: r.mealType || r.meal_type,
         amount: r.amount,
         unit: r.unit,
-        value: Number(r[keyTotal] || r[nutrient.key] || 0).toFixed(1),
+        value: Number(r[nutrient.key] || 0).toFixed(1),
       }))
     if (!sourceDetailItems.value.length) {
       sourceDetailItems.value = allRecords.map(r => ({
