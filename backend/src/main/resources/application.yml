@@ -5,25 +5,24 @@ spring:
   application:
     name: diet-assistant
   datasource:
-    url: jdbc:mysql://localhost:3306/diet_assistant?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: your-password
+    url: ${DB_URL:jdbc:mysql://localhost:3306/diet_assistant?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+    username: ${DB_USERNAME:diet_user}
+    password: ${DB_PASSWORD:}
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
   jpa:
     hibernate:
-      ddl-auto: update
-      database-platform: org.hibernate.dialect.MySQLDialect
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    database-platform: ${JPA_DATABASE_PLATFORM:org.hibernate.dialect.MySQLDialect}
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
   sql:
     init:
-      mode: always
-      data-locations: classpath:init.sql
+      mode: ${SQL_INIT_MODE:never}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -36,22 +35,10 @@ logging:
 # 阿里云百炼 DashScope AI 配置（通义千问多模态模型）
 ai:
   dashscope:
-    api-key: temp
+    api-key: ${DASHSCOPE_API_KEY:temp}
     model: qwen-omni-turbo              # 多模态模型：支持图片/文字/语音
     text-model: qwen-turbo-latest       # 纯文本模型：更便宜，用于文字解析
     multimodal-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
     text-url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
     max-tokens: 1000
     timeout: 20000
-
-# MySQL configuration (uncomment to use MySQL instead of H2)
-#spring:
-#  datasource:
-#    url: jdbc:mysql://localhost:3306/diet_assistant?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    username: root
-#    password: root
-#  jpa:
-#    hibernate:
-#      ddl-auto: update
-#    database-platform: org.hibernate.dialect.MySQLDialect
