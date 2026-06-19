@@ -16,8 +16,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================================
 -- 1. users 表（文档 8.2.1）
 -- ============================================================
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
     `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键',
     `nickname`      VARCHAR(32)  NOT NULL                COMMENT '展示昵称',
     `username`      VARCHAR(32)  NOT NULL                COMMENT '登录用户名',
@@ -31,8 +30,7 @@ CREATE TABLE `users` (
 -- ============================================================
 -- 2. user_profile 表（文档 8.2.2）
 -- ============================================================
-DROP TABLE IF EXISTS `user_profile`;
-CREATE TABLE `user_profile` (
+CREATE TABLE IF NOT EXISTS `user_profile` (
     `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '档案主键',
     `user_id`          BIGINT       NOT NULL                COMMENT '所属用户',
     `age`              INT          DEFAULT NULL            COMMENT '年龄',
@@ -52,8 +50,7 @@ CREATE TABLE `user_profile` (
 -- ============================================================
 -- 3. food_item 表（文档 8.2.3）
 -- ============================================================
-DROP TABLE IF EXISTS `food_item`;
-CREATE TABLE `food_item` (
+CREATE TABLE IF NOT EXISTS `food_item` (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '食物主键',
     `name`         VARCHAR(64)  NOT NULL                COMMENT '标准食物名称',
     `category`     VARCHAR(32)  NOT NULL                COMMENT '食物分类',
@@ -71,8 +68,7 @@ CREATE TABLE `food_item` (
 -- ============================================================
 -- 4. diet_record 表（文档 8.2.4）
 -- ============================================================
-DROP TABLE IF EXISTS `diet_record`;
-CREATE TABLE `diet_record` (
+CREATE TABLE IF NOT EXISTS `diet_record` (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '饮食记录主键',
     `user_id`      BIGINT       NOT NULL                COMMENT '所属用户',
     `food_id`      BIGINT       DEFAULT NULL            COMMENT '匹配到的标准食物',
@@ -100,8 +96,7 @@ CREATE TABLE `diet_record` (
 -- ============================================================
 -- 5. nutrition_record 表（文档 8.2.5）
 -- ============================================================
-DROP TABLE IF EXISTS `nutrition_record`;
-CREATE TABLE `nutrition_record` (
+CREATE TABLE IF NOT EXISTS `nutrition_record` (
     `id`                BIGINT        NOT NULL AUTO_INCREMENT COMMENT '汇总记录主键',
     `user_id`           BIGINT        NOT NULL                COMMENT '所属用户',
     `record_date`       DATE          NOT NULL                COMMENT '汇总日期',
@@ -120,8 +115,7 @@ CREATE TABLE `nutrition_record` (
 -- ============================================================
 -- 6. recipe 表（文档 8.2.6）
 -- ============================================================
-DROP TABLE IF EXISTS `recipe`;
-CREATE TABLE `recipe` (
+CREATE TABLE IF NOT EXISTS `recipe` (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '食谱主键',
     `name`         VARCHAR(64)  NOT NULL                COMMENT '食谱名称',
     `ingredients`  TEXT         NOT NULL                COMMENT '主要食材',
@@ -138,8 +132,7 @@ CREATE TABLE `recipe` (
 -- ============================================================
 -- 7. recommendation 表（文档 8.2.7）
 -- ============================================================
-DROP TABLE IF EXISTS `recommendation`;
-CREATE TABLE `recommendation` (
+CREATE TABLE IF NOT EXISTS `recommendation` (
     `id`         BIGINT        NOT NULL AUTO_INCREMENT COMMENT '推荐记录主键',
     `user_id`    BIGINT        NOT NULL                COMMENT '所属用户',
     `recipe_id`  BIGINT        NOT NULL                COMMENT '对应食谱',
@@ -156,8 +149,7 @@ CREATE TABLE `recommendation` (
 -- ============================================================
 -- 8. alert_rule 表（文档 8.2.8）
 -- ============================================================
-DROP TABLE IF EXISTS `alert_rule`;
-CREATE TABLE `alert_rule` (
+CREATE TABLE IF NOT EXISTS `alert_rule` (
     `id`            BIGINT        NOT NULL AUTO_INCREMENT COMMENT '规则主键',
     `user_id`       BIGINT        NOT NULL                COMMENT '所属用户',
     `nutrient_type` VARCHAR(16)   NOT NULL                COMMENT '阈值指标，如 sugar / sodium / calorie',
@@ -172,8 +164,7 @@ CREATE TABLE `alert_rule` (
 -- ============================================================
 -- 9. meal_photo 表（餐次照片）
 -- ============================================================
-DROP TABLE IF EXISTS `meal_photo`;
-CREATE TABLE `meal_photo` (
+CREATE TABLE IF NOT EXISTS `meal_photo` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '照片主键',
     `user_id`     BIGINT       NOT NULL                COMMENT '所属用户',
     `record_date` DATE         NOT NULL                COMMENT '拍摄日期',
@@ -189,8 +180,7 @@ CREATE TABLE `meal_photo` (
 -- ============================================================
 -- 10. voice_record 表（语音录音）
 -- ============================================================
-DROP TABLE IF EXISTS `voice_record`;
-CREATE TABLE `voice_record` (
+CREATE TABLE IF NOT EXISTS `voice_record` (
     `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '录音主键',
     `user_id`          BIGINT       NOT NULL                COMMENT '所属用户',
     `record_date`      DATE         NOT NULL                COMMENT '录音日期',
@@ -214,14 +204,20 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- 演示用户
 INSERT INTO `users` (`id`, `nickname`, `username`, `password_hash`, `created_at`, `updated_at`)
-VALUES (1, '健康达人', 'demo', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW(), NOW());
+VALUES (1, '健康达人', 'demo', '$2a$10$OxyEfHbICAPSvz6PJNMnVOVM3dDyFigl0zD9mEEN5UzAieEZtsRH.', NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    `nickname` = VALUES(`nickname`),
+    `password_hash` = VALUES(`password_hash`),
+    `updated_at` = VALUES(`updated_at`);
 
 -- 用户健康档案
 INSERT INTO `user_profile` (`id`, `user_id`, `age`, `height_cm`, `weight_kg`, `goal`, `taboo`, `taste_preference`, `warning_profile`, `gender`, `avatar_url`)
-VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', '男', NULL);
+VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', '男', NULL)
+ON DUPLICATE KEY UPDATE
+    `id` = `id`;
 
 -- 标准食物营养基线（每单位）
-INSERT INTO `food_item` (`id`, `name`, `category`, `unit`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`) VALUES
+INSERT IGNORE INTO `food_item` (`id`, `name`, `category`, `unit`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`) VALUES
 (1,  '米饭',   '主食',   '碗', 116.00, 2.60,  0.30,  25.90, 0.10,  2.00),
 (2,  '面条',   '主食',   '碗', 110.00, 3.40,  0.50,  22.80, 0.50,  50.00),
 (3,  '馒头',   '主食',   '个', 221.00, 7.00,  1.10,  44.20, 0.30,  165.00),
@@ -244,7 +240,7 @@ INSERT INTO `food_item` (`id`, `name`, `category`, `unit`, `calorie`, `protein`,
 (20, '黄瓜',   '蔬菜',   '根', 15.00,  0.65,  0.11,  3.63,  1.70,  2.00);
 
 -- 食谱数据
-INSERT INTO `recipe` (`id`, `name`, `ingredients`, `steps`, `tags`, `calorie`, `protein`, `fat`, `carbohydrate`) VALUES
+INSERT IGNORE INTO `recipe` (`id`, `name`, `ingredients`, `steps`, `tags`, `calorie`, `protein`, `fat`, `carbohydrate`) VALUES
 (1, '鸡胸肉沙拉',
  '鸡胸肉150g, 生菜50g, 番茄1个, 黄瓜半根, 橄榄油5ml, 柠檬汁少许',
  '1. 鸡胸肉煮熟切块 2. 蔬菜洗净切好 3. 混合所有食材 4. 淋上橄榄油和柠檬汁',
@@ -296,13 +292,13 @@ INSERT INTO `recipe` (`id`, `name`, `ingredients`, `steps`, `tags`, `calorie`, `
  '低卡,清淡,快手', 60.00, 6.00, 3.00, 2.00);
 
 -- 演示用户预警规则
-INSERT INTO `alert_rule` (`id`, `user_id`, `nutrient_type`, `threshold`, `enabled`, `updated_at`) VALUES
+INSERT IGNORE INTO `alert_rule` (`id`, `user_id`, `nutrient_type`, `threshold`, `enabled`, `updated_at`) VALUES
 (1, 1, 'calorie', 2000.00, TRUE, NOW()),
 (2, 1, 'sugar',    50.00, TRUE, NOW()),
 (3, 1, 'sodium',  2400.00, TRUE, NOW());
 
 -- 演示饮食记录（含营养快照）
-INSERT INTO `diet_record` (`id`, `user_id`, `food_id`, `food_name`, `meal_type`, `amount`, `source`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`, `record_time`, `created_at`) VALUES
+INSERT IGNORE INTO `diet_record` (`id`, `user_id`, `food_id`, `food_name`, `meal_type`, `amount`, `source`, `calorie`, `protein`, `fat`, `carbohydrate`, `sugar`, `sodium`, `record_time`, `created_at`) VALUES
 (1, 1, 1, '米饭',   '早餐', 1.00, 'manual', 116.00, 2.60,  0.30,  25.90, 0.10, 2.00,   '2026-06-12 08:30:00', NOW()),
 (2, 1, 7, '鸡蛋',   '早餐', 1.00, 'manual', 144.00, 13.30, 8.80,  2.80,  0.00, 131.00, '2026-06-12 08:30:00', NOW()),
 (3, 1, 8, '牛奶',   '早餐', 1.00, 'manual', 65.00,  3.00,  3.60,  4.80,  4.80, 40.00,  '2026-06-12 08:30:00', NOW()),
