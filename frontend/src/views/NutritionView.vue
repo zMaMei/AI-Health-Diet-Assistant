@@ -200,8 +200,8 @@ async function fetchData() {
       api.getNutrition(currentDate.value),
       api.getHealthScore(currentDate.value),
     ])
-    nutrition.value = nutRes.data.data
-    scoreData.value = scoreRes.data.data
+    nutrition.value = nutRes
+    scoreData.value = scoreRes
   } catch (e) {
     console.error(e)
   } finally {
@@ -264,7 +264,7 @@ async function showSourceDetail(nutrient) {
   sourceDetailUnit.value = info.unit
   try {
     const res = await api.getDietRecords(currentDate.value)
-    const allRecords = res.data.data || []
+    const allRecords = res || []
     // Extract records that have nutrition data for this nutrient, grouped by food
     const keyTotal = nutrient.key + 'Total'
     sourceDetailItems.value = allRecords

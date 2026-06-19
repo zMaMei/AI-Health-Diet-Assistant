@@ -113,7 +113,7 @@ async function fetchRecommendations() {
   loading.value = true
   try {
     const res = await api.getRecommendations()
-    recommendations.value = res.data.data || []
+    recommendations.value = res || []
     noMore.value = recommendations.value.length === 0
   } catch (e) {
     console.error(e)
@@ -125,11 +125,11 @@ async function fetchRecommendations() {
 async function dislike(recommendationId) {
   try {
     const res = await api.submitFeedback(recommendationId, 'dislike')
-    if (res.data.data) {
+    if (res) {
       // Replace the disliked one with a new recommendation
       const idx = recommendations.value.findIndex(r => r.id === recommendationId)
       if (idx >= 0) {
-        recommendations.value[idx] = res.data.data
+        recommendations.value[idx] = res
       }
     } else {
       // Remove if no replacement

@@ -7,6 +7,19 @@ function authHeaders() {
   return { Authorization: `Bearer ${state.token}` }
 }
 
+function unwrapApiResponse(res) {
+  const body = res.data
+  if (body && typeof body === 'object' && 'code' in body) {
+    if (body.code === 200) {
+      return body.data
+    }
+    const error = new Error(body.message || '请求失败')
+    error.response = { ...res, data: body }
+    throw error
+  }
+  return body
+}
+
 const state = reactive({
   isLoggedIn: false,
   userId: null,
@@ -48,7 +61,7 @@ function init() {
 
 async function login(username, password) {
   const res = await axios.post('/api/auth/login', { username, password })
-  const data = res.data.data
+  const data = unwrapApiResponse(res)
   state.isLoggedIn = true
   state.userId = data.userId
   state.username = data.username
@@ -61,7 +74,7 @@ async function login(username, password) {
 
 async function register(username, password) {
   const res = await axios.post('/api/auth/register', { username, password })
-  const data = res.data.data
+  const data = unwrapApiResponse(res)
   state.isLoggedIn = true
   state.userId = data.userId
   state.username = data.username
@@ -93,7 +106,7 @@ async function uploadAvatar(file) {
   const res = await axios.post('/api/auth/avatar', formData, {
     headers: authHeaders(),
   })
-  const avatarUrl = res.data.data
+  const avatarUrl = unwrapApiResponse(res)
   state.avatarUrl = avatarUrl
   saveToStorage()
   return avatarUrl
