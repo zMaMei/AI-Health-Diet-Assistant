@@ -432,7 +432,7 @@ async function saveAvatar() {
       await auth.uploadAvatar(file)
       closeAvatarModal()
     } catch (e) {
-      alert('头像上传失败')
+      toast.show('头像上传失败')
     }
   }, 'image/jpeg', 0.9)
 }
@@ -733,7 +733,7 @@ async function saveProfile() {
     })
     toast.show('保存成功')
   } catch (e) {
-    alert('保存失败')
+    toast.show('保存失败，请稍后重试')
   }
 }
 
