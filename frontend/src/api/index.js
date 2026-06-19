@@ -16,16 +16,6 @@ api.interceptors.request.use(config => {
   return config
 })
 
-function clearAuthState() {
-  auth.state.isLoggedIn = false
-  auth.state.userId = null
-  auth.state.username = ''
-  auth.state.nickname = ''
-  auth.state.avatarUrl = ''
-  auth.state.token = ''
-  localStorage.removeItem('diet_auth')
-}
-
 // 响应拦截器：处理 ApiResponse 包装和 401
 api.interceptors.response.use(
   response => {
@@ -35,7 +25,7 @@ api.interceptors.response.use(
         return body.data
       }
       if (body.code === 401) {
-        clearAuthState()
+        auth.clearLocalState()
         if (window.location.pathname !== '/profile') {
           toast.show('请先在"我的"页面登录')
         }
@@ -54,7 +44,7 @@ api.interceptors.response.use(
   error => {
     if (error.response && error.response.status === 401) {
       try {
-        clearAuthState()
+        auth.clearLocalState()
         if (window.location.pathname !== '/profile') {
           toast.show('请先在"我的"页面登录')
         }

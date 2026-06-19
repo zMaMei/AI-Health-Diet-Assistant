@@ -43,6 +43,16 @@ function clearStorage() {
   localStorage.removeItem(STORAGE_KEY)
 }
 
+function clearLocalState() {
+  state.isLoggedIn = false
+  state.userId = null
+  state.username = ''
+  state.nickname = ''
+  state.avatarUrl = ''
+  state.token = ''
+  clearStorage()
+}
+
 function init() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
@@ -91,13 +101,7 @@ async function logout() {
   } catch (e) {
     // 即使 API 调用失败也清除本地状态
   }
-  state.isLoggedIn = false
-  state.userId = null
-  state.username = ''
-  state.nickname = ''
-  state.avatarUrl = ''
-  state.token = ''
-  clearStorage()
+  clearLocalState()
 }
 
 async function uploadAvatar(file) {
@@ -115,6 +119,7 @@ async function uploadAvatar(file) {
 export default {
   state,
   init,
+  clearLocalState,
   login,
   register,
   logout,
