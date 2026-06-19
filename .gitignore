@@ -7,6 +7,9 @@ backend/target/
 frontend/dist/
 frontend/node_modules/
 
+# Local run logs
+backend/spring-*.log
+
 # IDE
 .idea/
 *.iml
