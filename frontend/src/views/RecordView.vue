@@ -528,9 +528,11 @@ const voiceCheckedCount = computed(() =>
 )
 
 let voiceMediaRecorder = null
+let voiceStream = null
 let voiceChunks = []
 let voiceTimer = null
 let voiceStartTime = null
+let voiceCancelOnStop = false
 
 // ==================== Manual Modal State ====================
 const showManualModal = ref(false)
@@ -755,8 +757,10 @@ function closeVoiceModal() {
 
 async function startVoiceRecord() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    voiceMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+    cleanupVoiceRecorder()
+    voiceCancelOnStop = false
+    voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    voiceMediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' })
     voiceChunks = []
 
     voiceMediaRecorder.ondataavailable = (e) => {
@@ -764,7 +768,12 @@ async function startVoiceRecord() {
     }
 
     voiceMediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop())
+      stopVoiceStream()
+      if (voiceCancelOnStop) {
+        voiceCancelOnStop = false
+        voiceChunks = []
+        return
+      }
       // Auto trigger analysis after recording stops
       voiceAnalyzeBlob()
     }
@@ -866,10 +875,20 @@ async function deleteVoiceRecord(id) {
 function cleanupVoiceRecorder() {
   if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null }
   if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+    voiceCancelOnStop = true
     voiceMediaRecorder.stop()
+  } else {
+    stopVoiceStream()
   }
   voiceMediaRecorder = null
   voiceChunks = []
+}
+
+function stopVoiceStream() {
+  if (voiceStream) {
+    voiceStream.getTracks().forEach(t => t.stop())
+    voiceStream = null
+  }
 }
 
 async function saveFromVoice() {
