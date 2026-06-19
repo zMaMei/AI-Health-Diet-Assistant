@@ -521,7 +521,7 @@ async function fetchData() {
       api.getProfile(),
       api.getAlertRules(),
     ])
-    const p = profileRes.data.data
+    const p = profileRes
     profile.value = p
     form.value.goal = p.goal || '均衡'
     form.value.age = p.age
@@ -533,7 +533,7 @@ async function fetchData() {
     form.value.gender = p.gender || ''
     syncWarningFromForm()
 
-    alertRules.value = rulesRes.data.data || []
+    alertRules.value = rulesRes || []
   } catch (e) {
     console.error(e)
   } finally {
@@ -711,7 +711,7 @@ async function analyzeThreshold() {
       warningProfile: form.value.warningProfile,
     })
     const res = await api.analyzeAlertRules()
-    alertRules.value = res.data.data || []
+    alertRules.value = res || []
     toast.show('AI 分析完成，可手动调整后保存')
   } catch (e) {
     toast.show('AI 分析失败，请稍后重试')

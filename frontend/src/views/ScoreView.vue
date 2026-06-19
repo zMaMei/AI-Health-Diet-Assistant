@@ -101,7 +101,7 @@ async function fetchData() {
   loading.value = true
   try {
     const res = await api.getHealthScore(currentDate.value)
-    scoreData.value = res.data.data
+    scoreData.value = res
   } catch (e) {
     console.error(e)
   } finally {

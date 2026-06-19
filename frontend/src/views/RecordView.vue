@@ -557,12 +557,12 @@ async function fetchData() {
       api.getMealPhotos(today),
       api.getVoiceRecords(today),
     ])
-    records.value = recRes.data.data || []
-    todayNutrition.value = nutRes.data.data
+    records.value = recRes || []
+    todayNutrition.value = nutRes
 
     // Group photos by meal type
     const photos = {}
-    const photoList = photoRes.data.data || []
+    const photoList = photoRes || []
     photoList.forEach(p => {
       if (!photos[p.mealType]) photos[p.mealType] = []
       photos[p.mealType].push(p)
@@ -570,7 +570,7 @@ async function fetchData() {
     mealPhotos.value = photos
 
     // Store voice records for display
-    voiceRecords.value = voiceRes.data.data || []
+    voiceRecords.value = voiceRes || []
 
     // Auto-expand meals that have records
     mealTypes.forEach(m => {
@@ -586,7 +586,7 @@ async function fetchData() {
 async function checkWarnings() {
   try {
     const res = await api.checkAlerts(today)
-    const alertData = res.data.data
+    const alertData = res
     if (alertData?.hasAlert) {
       alerts.value = alertData.alerts || []
     } else {
@@ -645,7 +645,7 @@ async function startPhotoAnalyze() {
     const formData = new FormData()
     formData.append('image', photoFile.value)
     const res = await api.recognizeFood(formData)
-    const data = res.data.data
+    const data = res
     if (data?.candidates?.length) {
       photoCandidates.value = data.candidates.map(c => ({
         ...c,
@@ -801,7 +801,7 @@ async function voiceAnalyzeBlob() {
     formData.append('audio', blob, 'recording.webm')
     const duration = voiceElapsed.value
     const res = await api.parseVoice(formData, duration)
-    const data = res.data.data
+    const data = res
     if (data?.foodEntities?.length) {
       // Add checkbox state to each entity (match photo modal pattern)
       data.foodEntities.forEach(e => {
@@ -950,7 +950,7 @@ async function startManualAnalyze() {
   manualAnalysisResult.value = null
   try {
     const res = await api.analyzeFoodText(name)
-    const data = res.data.data
+    const data = res
     if (data) {
       manualAnalysisResult.value = data
     } else {
