@@ -1,10 +1,16 @@
 -- Default demo user (password: demo123)
 INSERT INTO users (id, nickname, username, password_hash, created_at, updated_at)
-VALUES (1, '健康达人', 'demo', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW(), NOW());
+VALUES (1, '健康达人', 'demo', '$2a$10$OxyEfHbICAPSvz6PJNMnVOVM3dDyFigl0zD9mEEN5UzAieEZtsRH.', NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    nickname = VALUES(nickname),
+    password_hash = VALUES(password_hash),
+    updated_at = VALUES(updated_at);
 
 -- User profile
 INSERT INTO user_profile (id, user_id, age, height_cm, weight_kg, goal, taboo, taste_preference, warning_profile, gender, avatar_url)
-VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', '男', NULL);
+VALUES (1, 1, 25, 170.00, 65.00, '减脂', '海鲜', '清淡,中式', '无', '男', NULL)
+ON DUPLICATE KEY UPDATE
+    id = id;
 
 -- Food items (nutrition per 100g)
 INSERT INTO food_item (id, name, category, unit, calorie, protein, fat, carbohydrate, sugar, sodium) VALUES
@@ -27,7 +33,9 @@ INSERT INTO food_item (id, name, category, unit, calorie, protein, fat, carbohyd
 (17, '酸奶', '乳制品', '杯', 72.00, 2.60, 2.70, 9.40, 9.40, 40.00),
 (18, '红薯', '主食', '个', 86.00, 1.60, 0.10, 20.10, 4.20, 55.00),
 (19, '玉米', '主食', '根', 112.00, 4.00, 1.20, 22.80, 3.20, 15.00),
-(20, '黄瓜', '蔬菜', '根', 15.00, 0.65, 0.11, 3.63, 1.70, 2.00);
+(20, '黄瓜', '蔬菜', '根', 15.00, 0.65, 0.11, 3.63, 1.70, 2.00)
+ON DUPLICATE KEY UPDATE
+    id = id;
 
 -- Recipe data
 INSERT INTO recipe (id, name, ingredients, steps, tags, calorie, protein, fat, carbohydrate) VALUES
@@ -79,13 +87,17 @@ INSERT INTO recipe (id, name, ingredients, steps, tags, calorie, protein, fat, c
 (10, '紫菜蛋花汤',
  '鸡蛋1个, 紫菜5g, 虾皮少许, 葱花, 盐适量',
  '1. 鸡蛋打散 2. 水开下紫菜和虾皮 3. 淋入蛋液 4. 加盐调味 5. 撒葱花',
- '低卡,清淡,快手', 60.00, 6.00, 3.00, 2.00);
+ '低卡,清淡,快手', 60.00, 6.00, 3.00, 2.00)
+ON DUPLICATE KEY UPDATE
+    id = id;
 
 -- Default alert rules for demo user
 INSERT INTO alert_rule (id, user_id, nutrient_type, threshold, enabled, updated_at) VALUES
 (1, 1, 'calorie', 2000.00, true, NOW()),
 (2, 1, 'sugar', 50.00, true, NOW()),
-(3, 1, 'sodium', 2400.00, true, NOW());
+(3, 1, 'sodium', 2400.00, true, NOW())
+ON DUPLICATE KEY UPDATE
+    id = id;
 
 -- Sample diet records for demo (with nutrition snapshot columns)
 INSERT INTO diet_record (id, user_id, food_id, food_name, meal_type, amount, source, calorie, protein, fat, carbohydrate, sugar, sodium, record_time, created_at) VALUES
@@ -94,4 +106,6 @@ INSERT INTO diet_record (id, user_id, food_id, food_name, meal_type, amount, sou
 (3, 1, 8, '牛奶', '早餐', 1.00, 'manual', 65.00, 3.00, 3.60, 4.80, 4.80, 40.00, '2026-06-12 08:30:00', NOW()),
 (4, 1, 1, '米饭', '午餐', 1.00, 'manual', 116.00, 2.60, 0.30, 25.90, 0.10, 2.00, '2026-06-12 12:00:00', NOW()),
 (5, 1, 4, '鸡腿', '午餐', 1.00, 'manual', 181.00, 20.20, 11.00, 0.00, 0.00, 80.00, '2026-06-12 12:00:00', NOW()),
-(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', 25.00, 2.00, 1.00, 3.00, 1.00, 150.00, '2026-06-12 12:00:00', NOW());
+(6, 1, 9, '炒青菜', '午餐', 1.00, 'manual', 25.00, 2.00, 1.00, 3.00, 1.00, 150.00, '2026-06-12 12:00:00', NOW())
+ON DUPLICATE KEY UPDATE
+    id = id;

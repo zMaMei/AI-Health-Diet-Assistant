@@ -29,6 +29,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final String DEMO_USERNAME = "demo";
+    private static final String DEMO_PASSWORD = "demo123";
+    private static final String LEGACY_DEMO_PASSWORD_HASH =
+            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
     // token → userId
     private final Map<String, Long> tokenStore = new ConcurrentHashMap<>();
@@ -110,7 +114,7 @@ public class AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("用户名或密码错误"));
 
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(password, user.getPasswordHash()) && !isLegacyDemoLogin(username, password, user)) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
 
@@ -118,6 +122,19 @@ public class AuthService {
 
         UserProfile profile = userProfileRepository.findByUserId(user.getId()).orElse(null);
         return buildLoginResult(user, profile);
+    }
+
+    private boolean isLegacyDemoLogin(String username, String password, User user) {
+        if (!DEMO_USERNAME.equals(username)
+                || !DEMO_PASSWORD.equals(password)
+                || !LEGACY_DEMO_PASSWORD_HASH.equals(user.getPasswordHash())) {
+            return false;
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(DEMO_PASSWORD));
+        userRepository.save(user);
+        log.warn("Legacy demo password hash detected and upgraded for username={}", username);
+        return true;
     }
 
     // ==================== 登出 ====================
