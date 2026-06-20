@@ -137,13 +137,14 @@ import api from '../api/index.js'
 import toast from '../toast.js'
 
 const recommendations = ref([])
+const userThresholds = ref({})
 const loading = ref(false)
 const refreshing = ref(false)
 const errorMsg = ref('')
 const showDetailModal = ref(false)
 const detailRecipe = ref(null)
 
-// Default thresholds (used when profile not yet loaded — backend provides real ones)
+// Default thresholds fallback (used when backend hasn't provided thresholds yet)
 const defaultThresholds = {
   calorie: 2000, protein: 60, fat: 65, carbohydrate: 300, sugar: 50, sodium: 2400
 }
@@ -154,10 +155,12 @@ async function fetchRecommendations() {
   try {
     const res = await api.getRecommendations()
     const data = res.data?.data
-    if (Array.isArray(data)) {
-      recommendations.value = data
+    if (data && Array.isArray(data.recommendations)) {
+      recommendations.value = data.recommendations
+      userThresholds.value = data.thresholds || {}
     } else {
       recommendations.value = []
+      userThresholds.value = {}
     }
   } catch (e) {
     console.error(e)
@@ -178,11 +181,13 @@ async function refreshAll() {
   try {
     const res = await api.refreshRecommendations()
     const data = res.data?.data
-    if (Array.isArray(data)) {
-      recommendations.value = data
+    if (data && Array.isArray(data.recommendations)) {
+      recommendations.value = data.recommendations
+      userThresholds.value = data.thresholds || {}
       toast.show('已为您换一批推荐')
     } else {
       recommendations.value = []
+      userThresholds.value = {}
     }
   } catch (e) {
     console.error(e)
@@ -207,7 +212,9 @@ function nutBars(rec) {
   ]
   return nutrients.map(n => {
     const recipeVal = Number(rec[n.key]) || 0
-    const threshold = defaultThresholds[n.key] || 2000
+    // Use user thresholds from backend, fall back to defaults
+    const thresholds = Object.keys(userThresholds.value).length > 0 ? userThresholds.value : defaultThresholds
+    const threshold = thresholds[n.key] || defaultThresholds[n.key] || 2000
     const pct = threshold > 0 ? Math.min(100, (recipeVal / threshold) * 100) : 0
     return {
       ...n,

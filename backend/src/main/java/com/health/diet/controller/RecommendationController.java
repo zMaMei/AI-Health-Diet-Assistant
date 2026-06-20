@@ -1,12 +1,10 @@
 package com.health.diet.controller;
 
 import com.health.diet.common.ApiResponse;
-import com.health.diet.dto.vo.RecommendationVO;
+import com.health.diet.dto.vo.RecommendationPageVO;
 import com.health.diet.service.RecommendationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/recommendations")
@@ -19,14 +17,14 @@ public class RecommendationController {
     }
 
     @GetMapping("/today")
-    public ApiResponse<List<RecommendationVO>> getToday(HttpServletRequest request) {
+    public ApiResponse<RecommendationPageVO> getToday(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        return ApiResponse.success(recommendationService.recommendToday(userId));
+        return ApiResponse.success(recommendationService.getTodayPage(userId));
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<List<RecommendationVO>> refreshToday(HttpServletRequest request) {
+    public ApiResponse<RecommendationPageVO> refreshToday(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        return ApiResponse.success(recommendationService.refreshToday(userId));
+        return ApiResponse.success(recommendationService.refreshTodayPage(userId));
     }
 }

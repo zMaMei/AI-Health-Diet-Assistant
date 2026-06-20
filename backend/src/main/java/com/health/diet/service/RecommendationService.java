@@ -3,6 +3,7 @@ package com.health.diet.service;
 import com.health.diet.adapter.RecommendationAdapter;
 import com.health.diet.adapter.RecommendationAdapter.RecommendedRecipe;
 import com.health.diet.adapter.RecommendationAdapter.RecommendationResult;
+import com.health.diet.dto.vo.RecommendationPageVO;
 import com.health.diet.dto.vo.RecommendationVO;
 import com.health.diet.entity.AlertRule;
 import com.health.diet.entity.Recipe;
@@ -46,6 +47,28 @@ public class RecommendationService {
         this.alertRuleRepository = alertRuleRepository;
         this.dietRecordRepository = dietRecordRepository;
         this.recommendationAdapter = recommendationAdapter;
+    }
+
+    /**
+     * 获取今日推荐页面数据（含用户阈值）。
+     */
+    public RecommendationPageVO getTodayPage(Long userId) {
+        RecommendationPageVO page = new RecommendationPageVO();
+        page.setRecommendations(recommendToday(userId));
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
+        page.setThresholds(profile != null ? getUserThresholds(userId, profile) : Map.of());
+        return page;
+    }
+
+    /**
+     * 强制刷新今日推荐页面数据（含用户阈值）。
+     */
+    public RecommendationPageVO refreshTodayPage(Long userId) {
+        RecommendationPageVO page = new RecommendationPageVO();
+        page.setRecommendations(refreshToday(userId));
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
+        page.setThresholds(profile != null ? getUserThresholds(userId, profile) : Map.of());
+        return page;
     }
 
     /**
