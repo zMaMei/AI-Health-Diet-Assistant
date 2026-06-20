@@ -35,6 +35,12 @@ public class Recipe {
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal carbohydrate = BigDecimal.ZERO;
 
+    @Column(precision = 8, scale = 2)
+    private BigDecimal sugar = BigDecimal.ZERO;
+
+    @Column(precision = 8, scale = 2)
+    private BigDecimal sodium = BigDecimal.ZERO;
+
     public Recipe() {}
 
     public Long getId() { return id; }
@@ -46,6 +52,8 @@ public class Recipe {
     public BigDecimal getProtein() { return protein; }
     public BigDecimal getFat() { return fat; }
     public BigDecimal getCarbohydrate() { return carbohydrate; }
+    public BigDecimal getSugar() { return sugar; }
+    public BigDecimal getSodium() { return sodium; }
 
     public void setId(Long id) { this.id = id; }
     public void setName(String name) { this.name = name; }
@@ -56,4 +64,6 @@ public class Recipe {
     public void setProtein(BigDecimal protein) { this.protein = protein; }
     public void setFat(BigDecimal fat) { this.fat = fat; }
     public void setCarbohydrate(BigDecimal carbohydrate) { this.carbohydrate = carbohydrate; }
+    public void setSugar(BigDecimal sugar) { this.sugar = sugar; }
+    public void setSodium(BigDecimal sodium) { this.sodium = sodium; }
 }

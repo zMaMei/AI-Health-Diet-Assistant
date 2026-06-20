@@ -8,14 +8,16 @@ public class RecommendationVO {
     private Long recipeId;
     private String recipeName;
     private String ingredients;
+    private String steps;
     private String tags;
     private BigDecimal calorie;
     private BigDecimal protein;
     private BigDecimal fat;
     private BigDecimal carbohydrate;
+    private BigDecimal sugar;
+    private BigDecimal sodium;
     private String reason;
     private BigDecimal matchScore;
-    private String feedback;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -25,6 +27,8 @@ public class RecommendationVO {
     public void setRecipeName(String recipeName) { this.recipeName = recipeName; }
     public String getIngredients() { return ingredients; }
     public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+    public String getSteps() { return steps; }
+    public void setSteps(String steps) { this.steps = steps; }
     public String getTags() { return tags; }
     public void setTags(String tags) { this.tags = tags; }
     public BigDecimal getCalorie() { return calorie; }
@@ -35,10 +39,12 @@ public class RecommendationVO {
     public void setFat(BigDecimal fat) { this.fat = fat; }
     public BigDecimal getCarbohydrate() { return carbohydrate; }
     public void setCarbohydrate(BigDecimal carbohydrate) { this.carbohydrate = carbohydrate; }
+    public BigDecimal getSugar() { return sugar; }
+    public void setSugar(BigDecimal sugar) { this.sugar = sugar; }
+    public BigDecimal getSodium() { return sodium; }
+    public void setSodium(BigDecimal sodium) { this.sodium = sodium; }
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
     public BigDecimal getMatchScore() { return matchScore; }
     public void setMatchScore(BigDecimal matchScore) { this.matchScore = matchScore; }
-    public String getFeedback() { return feedback; }
-    public void setFeedback(String feedback) { this.feedback = feedback; }
 }

@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS `recipe` (
     `protein`      DECIMAL(8,2) NOT NULL DEFAULT 0.00   COMMENT '单份蛋白质',
     `fat`          DECIMAL(8,2) NOT NULL DEFAULT 0.00   COMMENT '单份脂肪',
     `carbohydrate` DECIMAL(8,2) NOT NULL DEFAULT 0.00   COMMENT '单份碳水',
+    `sugar`        DECIMAL(8,2) DEFAULT NULL            COMMENT '糖(g)',
+    `sodium`       DECIMAL(8,2) DEFAULT NULL            COMMENT '钠(mg)',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='食谱表';
@@ -138,7 +140,6 @@ CREATE TABLE IF NOT EXISTS `recommendation` (
     `recipe_id`  BIGINT        NOT NULL                COMMENT '对应食谱',
     `reason`     VARCHAR(255)  NOT NULL                COMMENT '推荐理由',
     `score`      DECIMAL(6,2)  NOT NULL                COMMENT '匹配度分值',
-    `feedback`   VARCHAR(16)   DEFAULT NULL            COMMENT 'like / dislike / skipped',
     `created_at` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '推荐生成时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
