@@ -31,6 +31,34 @@
             </div>
           </div>
           <div class="meal-body" v-show="expandedMeals[meal.key]">
+            <!-- Photo carousel -->
+            <div class="photo-carousel" v-if="mealPhotos[meal.key]?.length">
+              <div class="photo-track">
+                <div class="photo-thumb" v-for="(photo, pi) in mealPhotos[meal.key]" :key="pi"
+                     @click="openPhotoPreview(photo.imageUrl || photo)">
+                  <img :src="photoFullUrl(photo.imageUrl || photo)" alt="食物照片" loading="lazy">
+                </div>
+              </div>
+            </div>
+
+            <div class="meal-divider" v-if="mealPhotos[meal.key]?.length || voiceRecordsByMeal[meal.key]?.length"></div>
+
+            <!-- Voice records -->
+            <div class="voice-records-mini" v-if="voiceRecordsByMeal[meal.key]?.length">
+              <div class="voice-mini-card" v-for="vr in voiceRecordsByMeal[meal.key]" :key="vr.id">
+                <div class="voice-mini-header">
+                  <span class="voice-mini-icon">🎵</span>
+                  <span class="voice-mini-duration">{{ vr.durationSeconds || 0 }}秒</span>
+                  <button class="voice-play-btn" @click.stop="playVoice(vr)">
+                    {{ playingVoiceId === vr.id ? '⏸ 暂停' : '▶️ 播放' }}
+                  </button>
+                  <button class="voice-delete-btn" @click.stop="deleteVoiceRecord(vr.id)">删除</button>
+                </div>
+                <div class="voice-mini-text">{{ vr.transcribedText || '(无识别文本)' }}</div>
+              </div>
+            </div>
+
+            <!-- Food items -->
             <div class="food-item" v-for="rec in groupedRecords[meal.key]" :key="rec.id">
               <div class="food-main">
                 <div class="food-name-row">
@@ -160,7 +188,6 @@
     <!-- ===== 区域⑤: AI 智能分析（对话式） ===== -->
     <h2 class="page-section-title">🤖 AI 智能分析</h2>
     <div class="card ai-chat-card">
-      <!-- Chat messages -->
       <div class="chat-messages" ref="chatMsgsRef">
         <div v-if="aiLoading" class="loading" style="padding:12px">AI 思考中...</div>
         <div v-if="!aiMessages.length && !aiLoading" class="chat-empty">
@@ -179,7 +206,6 @@
         </div>
       </div>
 
-      <!-- Input area -->
       <div class="chat-input-area">
         <input v-model="aiInput" type="text" class="chat-input"
                placeholder="输入你的问题，如：昨天的蛋白质够吗？"
@@ -191,6 +217,14 @@
         </button>
       </div>
     </div>
+
+    <!-- Photo preview lightbox -->
+    <div class="lightbox-overlay" v-if="previewPhoto" @click="closePhotoPreview">
+      <img :src="previewPhoto" alt="食物照片大图" class="lightbox-img" @click.stop>
+    </div>
+
+    <!-- Hidden audio player -->
+    <audio ref="voiceAudioRef" style="display:none" @ended="onVoiceEnded" preload="auto"></audio>
 
     <!-- Edit record modal -->
     <div class="modal-overlay" v-if="showEditModal" @click.self="showEditModal=false">
@@ -254,6 +288,8 @@ const circumference = 2 * Math.PI * 54
 
 // Diet records state
 const records = ref([])
+const mealPhotos = ref({})
+const voiceRecords = ref([])
 const mealTypes = [
   { key: '早餐', label: '早餐', icon: '🍳' },
   { key: '午餐', label: '午餐', icon: '🍚' },
@@ -287,6 +323,52 @@ const mealTotals = computed(() => {
   })
   return totals
 })
+
+const voiceRecordsByMeal = computed(() => {
+  const groups = {}
+  voiceRecords.value.forEach(v => {
+    if (!groups[v.mealType]) groups[v.mealType] = []
+    groups[v.mealType].push(v)
+  })
+  return groups
+})
+
+// Photo lightbox
+const previewPhoto = ref(null)
+function photoFullUrl(relativePath) {
+  if (!relativePath) return ''
+  return '/api/uploads' + relativePath
+}
+function openPhotoPreview(url) { previewPhoto.value = photoFullUrl(url) }
+function closePhotoPreview() { previewPhoto.value = null }
+
+// Voice playback
+const voiceAudioRef = ref(null)
+const playingVoiceId = ref(null)
+function playVoice(vr) {
+  if (playingVoiceId.value === vr.id) {
+    voiceAudioRef.value?.pause()
+    playingVoiceId.value = null
+    return
+  }
+  const audio = voiceAudioRef.value
+  if (audio) {
+    audio.src = '/api/uploads' + vr.audioUrl
+    audio.play().catch(e => console.error('语音播放失败', e))
+    playingVoiceId.value = vr.id
+  }
+}
+function onVoiceEnded() { playingVoiceId.value = null }
+async function deleteVoiceRecord(id) {
+  if (!confirm('确定删除这条语音记录？')) return
+  try {
+    await api.deleteVoiceRecord(id)
+    await fetchAll()
+  } catch (e) {
+    console.error('删除语音记录失败', e)
+    toast.show('删除失败')
+  }
+}
 
 // Edit modal
 const showEditModal = ref(false)
@@ -348,15 +430,29 @@ async function fetchAll() {
   loading.value = true
   scoreLoading.value = true
   try {
-    const [recRes, nutRes, scoreRes, convRes] = await Promise.all([
+    const [recRes, nutRes, scoreRes, photoRes, voiceRes, convRes] = await Promise.all([
       api.getDietRecords(currentDate.value),
       api.getNutrition(currentDate.value),
       api.getHealthScore(currentDate.value),
+      api.getMealPhotos(currentDate.value),
+      api.getVoiceRecords(currentDate.value),
       api.getAiConversation(currentDate.value),
     ])
     records.value = (recRes.data?.data) || []
     nutrition.value = (nutRes.data?.data) || null
     scoreData.value = (scoreRes.data?.data) || null
+
+    // Group photos by meal type
+    const photos = {}
+    const photoList = (photoRes.data?.data) || []
+    photoList.forEach(p => {
+      if (!photos[p.mealType]) photos[p.mealType] = []
+      photos[p.mealType].push(p)
+    })
+    mealPhotos.value = photos
+
+    // Store voice records
+    voiceRecords.value = (voiceRes.data?.data) || []
 
     // Auto-expand meals with records
     mealTypes.forEach(m => {
@@ -436,14 +532,12 @@ async function sendAiMessage() {
   if (!msg || aiLoading.value) return
   aiInput.value = ''
   aiLoading.value = true
-  // Optimistic user message
   aiMessages.value.push({ role: 'USER', content: msg, createdAt: new Date().toISOString() })
   scrollChatBottom()
   try {
     const res = await api.sendAiMessage(currentDate.value, msg)
     const data = res.data?.data
     if (data?.messages?.length) {
-      // Find the AI reply (last AI message from server) and append it
       const aiMsg = data.messages.filter(m => m.role === 'AI').pop()
       if (aiMsg) {
         aiMessages.value.push(aiMsg)
@@ -465,7 +559,6 @@ function scrollChatBottom() {
   })
 }
 
-// Markdown render (simple: bold, newlines)
 function renderMarkdown(text) {
   if (!text) return ''
   return text
@@ -588,6 +681,45 @@ onMounted(fetchAll)
 .meal-arrow { font-size: 14px; color: #bbb; }
 .meal-body { padding: 0 14px 10px 14px; }
 
+/* ---- Photo carousel ---- */
+.photo-carousel { margin-bottom: 10px; overflow: hidden; }
+.photo-track {
+  display: flex; gap: 8px; overflow-x: auto;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 0;
+}
+.photo-track::-webkit-scrollbar { height: 4px; }
+.photo-track::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+.photo-thumb {
+  flex-shrink: 0; width: 120px; height: 100px;
+  border-radius: 10px; overflow: hidden; scroll-snap-align: start;
+  cursor: pointer; border: 2px solid #eee; transition: border-color 0.2s;
+}
+.photo-thumb:hover { border-color: #4CAF50; }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.meal-divider { height: 1px; background: #f0f0f0; margin-bottom: 8px; }
+
+/* ---- Voice mini cards ---- */
+.voice-records-mini { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.voice-mini-card {
+  background: #F3E5F5; border-radius: 10px; padding: 10px 12px; border-left: 3px solid #9C27B0;
+}
+.voice-mini-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.voice-mini-icon { font-size: 16px; }
+.voice-mini-duration { font-size: 12px; color: #7B1FA2; font-weight: 500; }
+.voice-play-btn {
+  padding: 4px 12px; border-radius: 6px; border: 1px solid #9C27B0;
+  background: #fff; color: #9C27B0; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.voice-play-btn:hover { background: #F3E5F5; }
+.voice-delete-btn {
+  margin-left: auto; padding: 2px 8px; border-radius: 4px; border: 1px solid #e0e0e0;
+  background: #fff; color: #999; font-size: 11px; cursor: pointer;
+}
+.voice-mini-text {
+  font-size: 12px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
 /* ---- Food item ---- */
 .food-item {
   display: flex; justify-content: space-between; align-items: flex-start;
@@ -600,6 +732,14 @@ onMounted(fetchAll)
 .food-source { font-size: 11px; color: #999; background: #f0f0f0; padding: 1px 6px; border-radius: 4px; }
 .food-nutrition { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #888; }
 .food-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 8px; }
+
+/* ---- Lightbox ---- */
+.lightbox-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85); z-index: 300;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.lightbox-img { max-width: 92%; max-height: 85vh; border-radius: 12px; object-fit: contain; }
 
 /* ---- Score ---- */
 .score-card { text-align: center; padding: 24px; }

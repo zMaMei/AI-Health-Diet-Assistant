@@ -559,12 +559,12 @@ async function fetchData() {
       api.getMealPhotos(today),
       api.getVoiceRecords(today),
     ])
-    records.value = recRes || []
-    todayNutrition.value = nutRes
+    records.value = (recRes.data?.data) || []
+    todayNutrition.value = (nutRes.data?.data) || null
 
     // Group photos by meal type
     const photos = {}
-    const photoList = photoRes || []
+    const photoList = (photoRes.data?.data) || []
     photoList.forEach(p => {
       if (!photos[p.mealType]) photos[p.mealType] = []
       photos[p.mealType].push(p)
@@ -572,7 +572,7 @@ async function fetchData() {
     mealPhotos.value = photos
 
     // Store voice records for display
-    voiceRecords.value = voiceRes || []
+    voiceRecords.value = (voiceRes.data?.data) || []
 
     // Auto-expand meals that have records
     mealTypes.forEach(m => {
@@ -588,7 +588,7 @@ async function fetchData() {
 async function checkWarnings() {
   try {
     const res = await api.checkAlerts(today)
-    const alertData = res
+    const alertData = res.data?.data
     if (alertData?.hasAlert) {
       alerts.value = alertData.alerts || []
     } else {
