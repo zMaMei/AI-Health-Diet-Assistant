@@ -810,7 +810,7 @@ async function voiceAnalyzeBlob() {
     formData.append('audio', blob, 'recording.webm')
     const duration = voiceElapsed.value
     const res = await api.parseVoice(formData, duration)
-    const data = res
+    const data = res.data?.data
     if (data?.foodEntities?.length) {
       // Add checkbox state to each entity (match photo modal pattern)
       data.foodEntities.forEach(e => {
@@ -969,7 +969,7 @@ async function startManualAnalyze() {
   manualAnalysisResult.value = null
   try {
     const res = await api.analyzeFoodText(name)
-    const data = res
+    const data = res.data?.data
     if (data) {
       manualAnalysisResult.value = data
     } else {
