@@ -17,6 +17,7 @@ import com.health.diet.repository.UserProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -74,6 +75,7 @@ public class RecommendationService {
     /**
      * 今日推荐：有缓存返回缓存，无缓存 AI 生成。
      */
+    @Transactional
     public List<RecommendationVO> recommendToday(Long userId) {
         LocalDate today = LocalDate.now();
         LocalDateTime todayStart = today.atStartOfDay();
@@ -84,6 +86,14 @@ public class RecommendationService {
             List<Recommendation> cached = recommendationRepository
                     .findByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
             if (!cached.isEmpty()) {
+                // 只保留最近5条（清理旧系统遗留的冗余缓存）
+                if (cached.size() > 5) {
+                    log.info("今日缓存过多({}条)，清理旧记录", cached.size());
+                    cached.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+                    List<Recommendation> toDelete = cached.subList(5, cached.size());
+                    recommendationRepository.deleteAll(toDelete);
+                    cached = cached.subList(0, 5);
+                }
                 log.info("今日推荐命中缓存: userId={}, count={}", userId, cached.size());
                 return cached.stream().map(this::toVO).toList();
             }
@@ -97,6 +107,7 @@ public class RecommendationService {
     /**
      * 强制刷新：删除当天推荐，AI 重新生成。
      */
+    @Transactional
     public List<RecommendationVO> refreshToday(Long userId) {
         LocalDate today = LocalDate.now();
         LocalDateTime todayStart = today.atStartOfDay();
@@ -106,11 +117,18 @@ public class RecommendationService {
             recommendationRepository.deleteByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
             log.info("已清除今日推荐缓存: userId={}", userId);
         } catch (Exception e) {
-            log.warn("清除今日推荐缓存失败: {}", e.getMessage());
+            log.warn("清除今日推荐缓存失败，尝试逐条删除: {}", e.getMessage());
+            List<Recommendation> cached = recommendationRepository
+                    .findByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
+            if (!cached.isEmpty()) {
+                recommendationRepository.deleteAll(cached);
+                log.info("逐条删除今日缓存完成: {}条", cached.size());
+            }
         }
         return generateAndSave(userId);
     }
 
+    @Transactional
     private List<RecommendationVO> generateAndSave(Long userId) {
         // 1. Load profile (required)
         UserProfile profile = userProfileRepository.findByUserId(userId)

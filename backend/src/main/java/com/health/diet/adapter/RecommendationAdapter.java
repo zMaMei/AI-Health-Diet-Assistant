@@ -17,8 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * AI 推荐适配器 — 调用 DashScope 文本模型根据用户营养缺口 + 菜谱库生成个性化推荐。
- * 使用 OpenAI 兼容 textUrl（比 multimodalUrl 更便宜）。
+ * AI 推荐适配器 — 调用 DashScope 多模态模型根据用户营养缺口 + 菜谱库生成个性化推荐。
+ * 使用 multimodalUrl（与 ThresholdAnalysisAdapter 一致，已验证可用）。
  */
 @Component
 public class RecommendationAdapter {
@@ -33,7 +33,7 @@ public class RecommendationAdapter {
         this.config = config;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(config.getTimeout());
-        factory.setReadTimeout(Math.max(config.getTimeout(), 30000)); // 推荐可能需要更长时间
+        factory.setReadTimeout(Math.max(config.getTimeout(), 30000));
         this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
@@ -43,21 +43,22 @@ public class RecommendationAdapter {
      * @return AI 推荐的菜谱列表
      */
     public RecommendationResult analyze(String prompt) {
-        log.info("调用 DashScope 文本模型进行智能推荐");
+        log.info("调用 DashScope 多模态模型进行智能推荐");
 
+        // 使用 multimodal 端点格式（与 ThresholdAnalysisAdapter 一致）
         Map<String, Object> body = Map.of(
-            "model", config.getTextModel(),
-            "messages", List.of(
-                Map.of("role", "system", "content",
-                    "你是一位专业的营养师。请严格以 JSON 格式返回，不要包含其他文字。"),
-                Map.of("role", "user", "content", prompt)
-            ),
-            "max_tokens", 1500
+            "model", config.getModel(),
+            "input", Map.of("messages", List.of(
+                Map.of("role", "system", "content", List.of(Map.of("text",
+                    "你是一位专业的营养师。请严格以 JSON 格式返回，不要包含其他文字。"))),
+                Map.of("role", "user", "content", List.of(Map.of("text", prompt)))
+            )),
+            "parameters", Map.of("max_tokens", 2000)
         );
 
         try {
             String resp = restClient.post()
-                    .uri(config.getTextUrl())
+                    .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
@@ -74,17 +75,11 @@ public class RecommendationAdapter {
 
     @SuppressWarnings("unchecked")
     private RecommendationResult parseResult(String rawJson) throws Exception {
-        // OpenAI 兼容格式响应：choices[0].message.content
+        // 多模态 API 响应格式：output.choices[0].message.content[0].text
         String jsonText;
         try {
             Map<String, Object> root = objectMapper.readValue(rawJson, new TypeReference<>() {});
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) root.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
-                jsonText = (String) msg.get("content");
-            } else {
-                jsonText = rawJson;
-            }
+            jsonText = extractTextFromResponse(root);
         } catch (Exception e) {
             jsonText = rawJson;
         }
@@ -99,8 +94,8 @@ public class RecommendationAdapter {
             }
         }
 
-        // 提取 JSON 对象/数组
-        Matcher m = Pattern.compile("\\{[\\s\\S]*\\}").matcher(jsonText);  // 跨行匹配
+        // 提取 JSON 对象
+        Matcher m = Pattern.compile("\\{[\\s\\S]*\\}").matcher(jsonText);
         if (m.find()) {
             jsonText = m.group();
         }
@@ -130,6 +125,33 @@ public class RecommendationAdapter {
         return new RecommendationResult(recipes);
     }
 
+    @SuppressWarnings("unchecked")
+    private String extractTextFromResponse(Map<String, Object> root) {
+        try {
+            Map<String, Object> output = (Map<String, Object>) root.get("output");
+            if (output != null) {
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) output.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+                    List<Map<String, Object>> content = (List<Map<String, Object>>) msg.get("content");
+                    if (content != null && !content.isEmpty()) {
+                        return (String) content.get(0).get("text");
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        // 兼容 OpenAI 格式：choices[0].message.content
+        try {
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) root.get("choices");
+            if (choices != null && !choices.isEmpty()) {
+                Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+                String text = (String) msg.get("content");
+                if (text != null) return text;
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
     private Long toLong(Object v) {
         if (v instanceof Number n) return n.longValue();
         if (v instanceof String s) {
@@ -143,7 +165,7 @@ public class RecommendationAdapter {
         if (v instanceof String s) {
             try { return new BigDecimal(s); } catch (Exception ignored) {}
         }
-        return BigDecimal.valueOf(50); // 默认分数
+        return BigDecimal.valueOf(50);
     }
 
     public record RecommendedRecipe(Long recipeId, String reason, BigDecimal score) {}
