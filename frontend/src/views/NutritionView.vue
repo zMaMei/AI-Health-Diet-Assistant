@@ -87,6 +87,19 @@
         <router-link to="/record" class="btn btn-primary" style="display:inline-block;margin-top:8px">去记录</router-link>
       </div>
 
+      <!-- AI 分析入口 -->
+      <div class="card ai-entry-card" @click="openAiModal">
+        <div class="ai-entry-content">
+          <span class="ai-entry-icon">🤖</span>
+          <div class="ai-entry-text">
+            <strong>AI 智能分析</strong>
+            <span v-if="aiMessages.length">{{ aiMessages.length }} 条对话</span>
+            <span v-else>点击开始饮食分析</span>
+          </div>
+        </div>
+        <span class="ai-entry-arrow">›</span>
+      </div>
+
       <!-- ===== 区域③: 健康评分 ===== -->
       <h2 class="page-section-title">⭐ 健康评分</h2>
 
@@ -185,39 +198,6 @@
       <div v-else class="empty-state"><div class="empty-icon">📊</div><p>暂无营养数据</p></div>
     </template>
 
-    <!-- ===== 区域⑤: AI 智能分析（对话式） ===== -->
-    <h2 class="page-section-title">🤖 AI 智能分析</h2>
-    <div class="card ai-chat-card">
-      <div class="chat-messages" ref="chatMsgsRef">
-        <div v-if="aiLoading" class="loading" style="padding:12px">AI 思考中...</div>
-        <div v-if="!aiMessages.length && !aiLoading" class="chat-empty">
-          <p>点击下方按钮，让 AI 帮你分析今日饮食</p>
-          <button class="btn btn-primary" @click="startAiAnalysis" style="margin-top:8px">
-            🤖 开始分析
-          </button>
-        </div>
-        <div v-for="(msg, i) in aiMessages" :key="i"
-             :class="['chat-bubble', msg.role === 'AI' ? 'ai' : 'user']">
-          <div class="bubble-avatar">{{ msg.role === 'AI' ? '🤖' : '👤' }}</div>
-          <div class="bubble-content">
-            <div class="bubble-text" v-html="renderMarkdown(msg.content)"></div>
-            <div class="bubble-time">{{ formatMsgTime(msg.createdAt) }}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chat-input-area">
-        <input v-model="aiInput" type="text" class="chat-input"
-               placeholder="输入你的问题，如：昨天的蛋白质够吗？"
-               @keyup.enter="sendAiMessage"
-               :disabled="aiLoading">
-        <button class="btn btn-primary chat-send-btn"
-                @click="sendAiMessage" :disabled="aiLoading || !aiInput.trim()">
-          发送
-        </button>
-      </div>
-    </div>
-
     <!-- Photo preview lightbox -->
     <div class="lightbox-overlay" v-if="previewPhoto" @click="closePhotoPreview">
       <img :src="previewPhoto" alt="食物照片大图" class="lightbox-img" @click.stop>
@@ -250,6 +230,43 @@
         </div>
         <button class="btn btn-primary" @click="saveEdit">保存修改</button>
         <button class="btn btn-outline" @click="showEditModal=false" style="margin-top:8px">取消</button>
+      </div>
+    </div>
+
+    <!-- AI Chat Modal -->
+    <div class="modal-overlay ai-modal-overlay" v-if="showAiModal" @click.self="showAiModal=false">
+      <div class="modal-content ai-modal-content">
+        <div class="ai-modal-header">
+          <h3>🤖 AI 智能分析</h3>
+          <button class="ai-modal-close" @click="showAiModal=false">✕</button>
+        </div>
+        <div class="chat-messages" ref="chatMsgsRef">
+          <div v-if="aiLoading" class="loading" style="padding:12px">AI 思考中...</div>
+          <div v-if="!aiMessages.length && !aiLoading" class="chat-empty">
+            <p>点击下方按钮，让 AI 帮你分析今日饮食</p>
+            <button class="btn btn-primary" @click="startAiAnalysis" style="margin-top:8px">
+              🤖 开始分析
+            </button>
+          </div>
+          <div v-for="(msg, i) in aiMessages" :key="i"
+               :class="['chat-bubble', msg.role === 'AI' ? 'ai' : 'user']">
+            <div class="bubble-avatar">{{ msg.role === 'AI' ? '🤖' : '👤' }}</div>
+            <div class="bubble-content">
+              <div class="bubble-text" v-html="renderMarkdown(msg.content)"></div>
+              <div class="bubble-time">{{ formatMsgTime(msg.createdAt) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input v-model="aiInput" type="text" class="chat-input"
+                 placeholder="输入你的问题，如：昨天的蛋白质够吗？"
+                 @keyup.enter="sendAiMessage"
+                 :disabled="aiLoading">
+          <button class="btn btn-primary chat-send-btn"
+                  @click="sendAiMessage" :disabled="aiLoading || !aiInput.trim()">
+            发送
+          </button>
+        </div>
       </div>
     </div>
 
@@ -375,10 +392,16 @@ const showEditModal = ref(false)
 const editForm = ref({ id: null, foodName: '', mealType: '午餐', amount: 1 })
 
 // AI chat state
+const showAiModal = ref(false)
 const aiMessages = ref([])
 const aiInput = ref('')
 const aiLoading = ref(false)
 const chatMsgsRef = ref(null)
+
+function openAiModal() {
+  showAiModal.value = true
+  nextTick(() => scrollChatBottom())
+}
 
 // Source detail modal
 const showSourceModal = ref(false)
@@ -809,10 +832,35 @@ onMounted(fetchAll)
 .bar-label { font-size: 10px; color: #999; margin-top: 4px; }
 .suggestion-text { font-size: 14px; line-height: 1.6; color: #555; }
 
+/* ---- AI entry card ---- */
+.ai-entry-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px !important; cursor: pointer; transition: background 0.2s;
+  border-left: 3px solid #9C27B0; margin-bottom: 12px;
+}
+.ai-entry-card:active { background: #f5f5f5; }
+.ai-entry-content { display: flex; align-items: center; gap: 12px; }
+.ai-entry-icon { font-size: 28px; }
+.ai-entry-text { display: flex; flex-direction: column; }
+.ai-entry-text strong { font-size: 15px; }
+.ai-entry-text span { font-size: 12px; color: #999; margin-top: 2px; }
+.ai-entry-arrow { font-size: 24px; color: #ccc; }
+
 /* ---- AI Chat ---- */
-.ai-chat-card { padding: 12px !important; }
+.ai-modal-content {
+  max-width: 420px; height: 75vh; display: flex; flex-direction: column; padding: 0;
+}
+.ai-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+}
+.ai-modal-header h3 { margin: 0; font-size: 17px; }
+.ai-modal-close {
+  background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 4px 8px;
+}
+
 .chat-messages {
-  max-height: 350px; overflow-y: auto; padding: 8px 4px;
+  flex: 1; overflow-y: auto; padding: 12px 16px;
   display: flex; flex-direction: column; gap: 10px;
 }
 .chat-empty { text-align: center; padding: 24px; color: #999; }
@@ -829,7 +877,10 @@ onMounted(fetchAll)
 .chat-bubble.user .bubble-text { background: #4CAF50; color: #fff; }
 .bubble-time { font-size: 10px; color: #bbb; margin-top: 2px; padding: 0 4px; }
 .chat-bubble.user .bubble-time { text-align: right; }
-.chat-input-area { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+.chat-input-area {
+  display: flex; gap: 8px; padding: 12px 16px;
+  border-top: 1px solid #f0f0f0; flex-shrink: 0;
+}
 .chat-input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 20px; font-size: 14px; }
 .chat-send-btn { border-radius: 20px; padding: 10px 20px; }
 
