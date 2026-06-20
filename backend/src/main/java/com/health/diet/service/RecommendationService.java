@@ -260,7 +260,7 @@ public class RecommendationService {
     }
 
     /**
-     * 降级：规则引擎推荐（保留旧逻辑）。
+     * 降级：规则引擎推荐（保留旧逻辑），引入随机性避免换一批无变化。
      */
     private List<RecommendationVO> generateByRules(Long userId, UserProfile profile,
                                                     List<Recipe> allRecipes) {
@@ -271,8 +271,14 @@ public class RecommendationService {
             scored.add(new ScoredRecipe(recipe, score, reason));
         }
 
+        // 从高分段随机选取，保证每次结果有变化
         scored.sort((a, b) -> b.score.compareTo(a.score));
-        List<ScoredRecipe> top = scored.stream().limit(5).toList();
+        // 取前 30% 或至少 15 道作为候选池，随机选 5 道
+        int poolSize = Math.max(15, scored.size() * 30 / 100);
+        poolSize = Math.min(poolSize, scored.size());
+        List<ScoredRecipe> pool = new ArrayList<>(scored.subList(0, poolSize));
+        Collections.shuffle(pool);
+        List<ScoredRecipe> top = pool.stream().limit(5).toList();
 
         List<RecommendationVO> result = new ArrayList<>();
         for (ScoredRecipe sr : top) {
