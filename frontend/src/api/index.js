@@ -135,4 +135,12 @@ export default {
   updateProfile(data) {
     return api.put('/user-profile', data)
   },
+
+  // AI 饮食分析对话
+  sendAiMessage(date, message) {
+    return api.post('/ai/analyze-diet', { date, message }, { timeout: 30000 })
+  },
+  getAiConversation(date) {
+    return api.get('/ai/conversation', { params: { date } })
+  },
 }
