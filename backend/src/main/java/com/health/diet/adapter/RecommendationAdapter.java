@@ -171,4 +171,105 @@ public class RecommendationAdapter {
     public record RecommendedRecipe(Long recipeId, String reason, BigDecimal score) {}
 
     public record RecommendationResult(List<RecommendedRecipe> recipes) {}
+
+    // ── AI 直接创造菜谱 ──────────────────────────────────────────
+
+    /**
+     * 调用 AI 直接创造新菜谱（换一批用）。
+     */
+    public FreshResult analyzeFresh(String prompt) {
+        log.info("调用 AI 创造新菜谱");
+
+        Map<String, Object> body = Map.of(
+            "model", config.getModel(),
+            "input", Map.of("messages", List.of(
+                Map.of("role", "system", "content", List.of(Map.of("text",
+                    "你是一位创意营养厨师。请严格以 JSON 格式返回，不要包含其他文字。"))),
+                Map.of("role", "user", "content", List.of(Map.of("text", prompt)))
+            )),
+            "parameters", Map.of("max_tokens", 3000)
+        );
+
+        try {
+            String resp = restClient.post()
+                    .uri(config.getMultimodalUrl())
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            log.debug("AI 创造菜谱原始响应: {}", resp);
+            return parseFreshResult(resp);
+        } catch (Exception e) {
+            log.error("AI 创造菜谱失败", e);
+            throw new RuntimeException("AI 推荐服务暂时不可用，请稍后重试", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private FreshResult parseFreshResult(String rawJson) throws Exception {
+        String jsonText;
+        try {
+            Map<String, Object> root = objectMapper.readValue(rawJson, new TypeReference<>() {});
+            jsonText = extractTextFromResponse(root);
+        } catch (Exception e) {
+            jsonText = rawJson;
+        }
+
+        jsonText = jsonText.trim();
+        if (jsonText.startsWith("```")) {
+            int start = jsonText.indexOf('\n') + 1;
+            int end = jsonText.lastIndexOf("```");
+            if (start > 0 && end > start) {
+                jsonText = jsonText.substring(start, end).trim();
+            }
+        }
+
+        Matcher m = Pattern.compile("\\{[\\s\\S]*\\}").matcher(jsonText);
+        if (m.find()) {
+            jsonText = m.group();
+        }
+
+        Map<String, Object> resultMap = objectMapper.readValue(jsonText, new TypeReference<>() {});
+
+        List<Map<String, Object>> recipeList = (List<Map<String, Object>>) resultMap.get("recipes");
+        if (recipeList == null || recipeList.isEmpty()) {
+            throw new RuntimeException("AI 未返回菜谱");
+        }
+
+        List<FreshRecipeData> recipes = recipeList.stream()
+                .map(r -> new FreshRecipeData(
+                    (String) r.get("name"),
+                    (String) r.get("ingredients"),
+                    (String) r.get("steps"),
+                    (String) r.get("tags"),
+                    toBigDecimal(r.get("calorie")),
+                    toBigDecimal(r.get("protein")),
+                    toBigDecimal(r.get("fat")),
+                    toBigDecimal(r.get("carbohydrate")),
+                    toBigDecimal(r.get("sugar")),
+                    toBigDecimal(r.get("sodium")),
+                    (String) r.get("reason"),
+                    toBigDecimal(r.get("score"))
+                ))
+                .filter(r -> r.name() != null && !r.name().isBlank())
+                .limit(5)
+                .toList();
+
+        if (recipes.isEmpty()) {
+            throw new RuntimeException("AI 返回的菜谱列表为空");
+        }
+
+        return new FreshResult(recipes);
+    }
+
+    public record FreshRecipeData(
+        String name, String ingredients, String steps, String tags,
+        BigDecimal calorie, BigDecimal protein, BigDecimal fat, BigDecimal carbohydrate,
+        BigDecimal sugar, BigDecimal sodium,
+        String reason, BigDecimal score
+    ) {}
+
+    public record FreshResult(List<FreshRecipeData> recipes) {}
 }

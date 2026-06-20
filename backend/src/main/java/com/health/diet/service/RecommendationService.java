@@ -125,7 +125,8 @@ public class RecommendationService {
                 log.info("逐条删除今日缓存完成: {}条", cached.size());
             }
         }
-        return generateAndSave(userId);
+        // 换一批：AI 直接创造新菜谱（不限菜谱库）
+        return generateFresh(userId);
     }
 
     @Transactional
@@ -257,6 +258,130 @@ public class RecommendationService {
 
         log.info("AI 推荐完成: userId={}, count={}", userId, vos.size());
         return vos;
+    }
+
+    /**
+     * AI 直接创造新菜谱（换一批用），不限菜谱库。
+     */
+    @Transactional
+    private List<RecommendationVO> generateFresh(Long userId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("请先在\"我的\"页面完善个人资料"));
+        Map<String, BigDecimal> thresholds = getUserThresholds(userId, profile);
+        Map<String, BigDecimal> intake = getTodayIntake(userId);
+
+        // 加载菜谱库作为风格参考（但不限定从其中选）
+        List<Recipe> existingRecipes = recipeRepository.findAll();
+        StringBuilder refSummary = new StringBuilder();
+        for (Recipe r : existingRecipes.stream().limit(20).toList()) {
+            refSummary.append(String.format("%s(%dkcal/%sg蛋白), ", r.getName(),
+                    nvl(r.getCalorie()).intValue(), nvl(r.getProtein()).intValue()));
+        }
+
+        String gaps = buildGapDescription(thresholds, intake);
+
+        String prompt = String.format("""
+            你是一位创意营养厨师。请根据用户画像和营养缺口，设计5道全新的一人食菜谱。
+            菜谱应填补营养缺口、避开忌口、匹配口味偏好。每道菜给出完整的食材、做法、营养数据。
+
+            ## 用户画像
+            - 年龄：%s岁 | 性别：%s | 身高：%scm | 体重：%skg
+            - 健康目标：%s
+            - 口味偏好：%s
+            - 忌口/禁忌：%s
+
+            ## 营养阈值（每日上限/目标）
+            - 热量：%.0f kcal | 蛋白质：%.0f g | 脂肪：%.0f g
+            - 碳水：%.0f g | 糖分：%.0f g | 钠：%.0f mg
+
+            ## 今日已摄入 & 缺口
+            %s
+
+            ## 已有菜谱风格参考（不要重复，创造新的）
+            %s
+
+            请严格返回JSON格式：
+            {"recipes": [{
+              "name": "菜名",
+              "ingredients": "食材1用量, 食材2用量, ...",
+              "steps": "1. 步骤一\\n2. 步骤二\\n3. 步骤三",
+              "tags": "标签1,标签2",
+              "calorie": 300,
+              "protein": 25,
+              "fat": 12,
+              "carbohydrate": 30,
+              "sugar": 5,
+              "sodium": 400,
+              "reason": "个性化推荐理由（提及填补了什么缺口、如何匹配用户目标）",
+              "score": 85
+            }, ...]}
+            """,
+            profile.getAge() != null ? profile.getAge().toString() : "未知",
+            profile.getGender() != null ? profile.getGender() : "未知",
+            profile.getHeightCm() != null ? profile.getHeightCm().toString() : "未知",
+            profile.getWeightKg() != null ? profile.getWeightKg().toString() : "未知",
+            profile.getGoal() != null ? profile.getGoal() : "均衡",
+            profile.getTastePreference() != null ? profile.getTastePreference() : "无特殊偏好",
+            profile.getTaboo() != null && !profile.getTaboo().isEmpty() ? profile.getTaboo() : "无",
+            nvl(thresholds.get("calorie")), nvl(thresholds.get("protein")),
+            nvl(thresholds.get("fat")), nvl(thresholds.get("carb")),
+            nvl(thresholds.get("sugar")), nvl(thresholds.get("sodium")),
+            gaps,
+            refSummary.length() > 0 ? refSummary.toString() : "无"
+        );
+
+        try {
+            RecommendationAdapter.FreshResult result = recommendationAdapter.analyzeFresh(prompt);
+
+            List<RecommendationVO> vos = new ArrayList<>();
+            for (RecommendationAdapter.FreshRecipeData fr : result.recipes()) {
+                // 检查是否与已有菜谱重名，重名则跳过
+                boolean duplicate = existingRecipes.stream()
+                        .anyMatch(r -> r.getName().equals(fr.name()));
+                if (duplicate) {
+                    log.info("AI 生成的菜谱\"{}\"与已有菜谱重名，跳过", fr.name());
+                    continue;
+                }
+
+                // 保存新菜谱
+                Recipe newRecipe = new Recipe();
+                newRecipe.setName(fr.name());
+                newRecipe.setIngredients(fr.ingredients() != null ? fr.ingredients() : "");
+                newRecipe.setSteps(fr.steps() != null ? fr.steps() : "");
+                newRecipe.setTags(fr.tags() != null ? fr.tags() : "");
+                newRecipe.setCalorie(fr.calorie() != null ? fr.calorie() : BigDecimal.ZERO);
+                newRecipe.setProtein(fr.protein() != null ? fr.protein() : BigDecimal.ZERO);
+                newRecipe.setFat(fr.fat() != null ? fr.fat() : BigDecimal.ZERO);
+                newRecipe.setCarbohydrate(fr.carbohydrate() != null ? fr.carbohydrate() : BigDecimal.ZERO);
+                newRecipe.setSugar(fr.sugar() != null ? fr.sugar() : BigDecimal.ZERO);
+                newRecipe.setSodium(fr.sodium() != null ? fr.sodium() : BigDecimal.ZERO);
+                recipeRepository.save(newRecipe);
+
+                // 创建推荐记录
+                Recommendation rec = new Recommendation();
+                rec.setUserId(userId);
+                rec.setRecipeId(newRecipe.getId());
+                rec.setReason(fr.reason() != null ? fr.reason() : "AI 个性化推荐");
+                rec.setScore(fr.score() != null ? fr.score() : BigDecimal.valueOf(50));
+                recommendationRepository.save(rec);
+
+                vos.add(toVO(rec, newRecipe));
+            }
+
+            log.info("AI 创造菜谱完成: userId={}, count={}", userId, vos.size());
+            if (!vos.isEmpty()) return vos;
+        } catch (Exception e) {
+            log.warn("AI 创造菜谱失败，降级为规则引擎: {}", e.getMessage());
+        }
+
+        // 降级：从菜谱库随机选
+        try {
+            List<Recipe> allRecipes = recipeRepository.findAll();
+            if (!allRecipes.isEmpty()) {
+                return generateByRules(userId, profile, allRecipes);
+            }
+        } catch (Exception ignored) {}
+        return List.of();
     }
 
     /**
