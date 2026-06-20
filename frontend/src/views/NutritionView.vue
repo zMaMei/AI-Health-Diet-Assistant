@@ -372,6 +372,7 @@ async function fetchAll() {
     }
   } catch (e) {
     console.error('获取数据失败', e)
+    toast.show('数据加载失败，请稍后重试')
   } finally {
     loading.value = false
     scoreLoading.value = false
@@ -442,8 +443,11 @@ async function sendAiMessage() {
     const res = await api.sendAiMessage(currentDate.value, msg)
     const data = res.data?.data
     if (data?.messages?.length) {
-      // Replace optimistic message with server data (includes AI reply)
-      aiMessages.value = data.messages
+      // Find the AI reply (last AI message from server) and append it
+      const aiMsg = data.messages.filter(m => m.role === 'AI').pop()
+      if (aiMsg) {
+        aiMessages.value.push(aiMsg)
+      }
     }
   } catch (e) {
     console.error('AI 回复失败', e)
@@ -518,7 +522,7 @@ async function showSourceDetail(nutrient) {
     const allRecords = (res.data?.data) || []
     const keyTotal = nutrient.key + 'Total'
     sourceDetailItems.value = allRecords
-      .filter(r => r[keyTotal] !== undefined && r[keyTotal] !== null)
+      .filter(r => (r[keyTotal] !== undefined && r[keyTotal] !== null) || (r[nutrient.key] !== undefined && r[nutrient.key] !== null))
       .map(r => ({
         foodName: r.foodName,
         mealType: r.mealType,
