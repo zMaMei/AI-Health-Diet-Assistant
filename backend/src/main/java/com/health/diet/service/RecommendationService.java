@@ -5,7 +5,6 @@ import com.health.diet.adapter.RecommendationAdapter.RecommendedRecipe;
 import com.health.diet.adapter.RecommendationAdapter.RecommendationResult;
 import com.health.diet.dto.vo.RecommendationVO;
 import com.health.diet.entity.AlertRule;
-import com.health.diet.entity.DietRecord;
 import com.health.diet.entity.Recipe;
 import com.health.diet.entity.Recommendation;
 import com.health.diet.entity.UserProfile;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
