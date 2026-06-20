@@ -187,7 +187,7 @@ public class RecommendationAdapter {
                     "你是一位创意营养厨师。请严格以 JSON 格式返回，不要包含其他文字。"))),
                 Map.of("role", "user", "content", List.of(Map.of("text", prompt)))
             )),
-            "parameters", Map.of("max_tokens", 3000)
+            "parameters", Map.of("max_tokens", 2000)
         );
 
         try {
