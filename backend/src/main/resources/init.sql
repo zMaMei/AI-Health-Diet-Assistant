@@ -195,6 +195,33 @@ CREATE TABLE IF NOT EXISTS `voice_record` (
     CONSTRAINT `fk_voice_record_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='语音录音记录表';
 
+-- ============================================================
+-- 11. ai_conversation 表（AI 对话）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `ai_conversation` (
+    `id`          BIGINT   NOT NULL AUTO_INCREMENT COMMENT '对话主键',
+    `user_id`     BIGINT   NOT NULL                COMMENT '所属用户',
+    `record_date` DATE     NOT NULL                COMMENT '对话日期',
+    `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_date` (`user_id`, `record_date`),
+    CONSTRAINT `fk_ai_conv_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI饮食分析对话表';
+
+-- ============================================================
+-- 12. ai_message 表（AI 对话消息）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `ai_message` (
+    `id`              BIGINT   NOT NULL AUTO_INCREMENT COMMENT '消息主键',
+    `conversation_id` BIGINT   NOT NULL                COMMENT '所属对话',
+    `role`            VARCHAR(16) NOT NULL             COMMENT 'USER 或 AI',
+    `content`         TEXT     NOT NULL                COMMENT '消息内容',
+    `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_conversation_id` (`conversation_id`),
+    CONSTRAINT `fk_ai_msg_conv` FOREIGN KEY (`conversation_id`) REFERENCES `ai_conversation` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI饮食分析消息表';
+
 -- 重新启用外键检查
 SET FOREIGN_KEY_CHECKS = 1;
 
