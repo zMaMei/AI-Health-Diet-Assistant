@@ -23,4 +23,10 @@ public class RecommendationController {
         Long userId = (Long) request.getAttribute("userId");
         return ApiResponse.success(recommendationService.recommendToday(userId));
     }
+
+    @PostMapping("/refresh")
+    public ApiResponse<List<RecommendationVO>> refreshToday(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return ApiResponse.success(recommendationService.refreshToday(userId));
+    }
 }
