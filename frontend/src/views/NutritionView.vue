@@ -407,12 +407,22 @@ const nutrients = [
   { key: 'carbohydrate', label: '碳水', color: '#4CAF50' },
 ]
 
+function formatLocalDate(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // Date handling
 function changeDate(delta) {
-  const d = new Date(currentDate.value + 'T00:00:00')
+  const parts = currentDate.value.split('-')
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
   d.setDate(d.getDate() + delta)
-  if (d > new Date()) return
-  currentDate.value = d.toISOString().split('T')[0]
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (d > today) return
+  currentDate.value = formatLocalDate(d)
   onDateChange()
 }
 
@@ -646,13 +656,21 @@ onMounted(fetchAll)
 }
 .date-input {
   width: auto;
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  padding: 8px 14px;
+  border: 1.5px solid #4CAF50;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
   color: #333;
   text-align: center;
+  background: #f9f9f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
 }
 .today-btn { padding: 6px 14px; }
 

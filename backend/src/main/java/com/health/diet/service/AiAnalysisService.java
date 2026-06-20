@@ -160,37 +160,37 @@ public class AiAnalysisService {
 
     @SuppressWarnings("unchecked")
     private String callAi(String contextData, List<AiMessage> history) {
-        log.info("调用 DashScope AI 饮食分析");
+        log.info("调用 DashScope 多模态 API 进行饮食分析");
 
-        List<Map<String, Object>> messages = new ArrayList<>();
-
-        // System prompt
-        messages.add(Map.of("role", "system", "content",
-            "你是一位专业的营养师和健康饮食顾问。请根据用户的饮食记录数据，提供专业、具体、可操作的饮食分析和建议。" +
+        String systemPrompt = "你是一位专业的营养师和健康饮食顾问。请根据用户的饮食记录数据，提供专业、具体、可操作的饮食分析和建议。" +
             "回答应包含：1) 对用户饮食的整体评价 2) 具体的营养摄入分析 3) 改进建议。" +
-            "回答应简洁友好，使用中文，适当使用emoji。"));
+            "回答应简洁友好，使用中文，适当使用emoji。" +
+            "以下是用户的饮食数据，请基于这些数据回答用户的问题：\n\n" + contextData;
 
-        // Context
-        messages.add(Map.of("role", "system", "content",
-            "以下是用户的饮食数据，请基于这些数据回答用户的问题：\n\n" + contextData));
+        // Build messages in multimodal API format
+        List<Map<String, Object>> msgList = new ArrayList<>();
+        msgList.add(Map.of("role", "system", "content",
+                List.of(Map.of("text", systemPrompt))));
 
         // History (最近 10 轮)
         int startIdx = Math.max(0, history.size() - 20);
         for (int i = startIdx; i < history.size(); i++) {
             AiMessage msg = history.get(i);
             String role = "USER".equals(msg.getRole()) ? "user" : "assistant";
-            messages.add(Map.of("role", role, "content", msg.getContent()));
+            msgList.add(Map.of("role", role, "content",
+                    List.of(Map.of("text", msg.getContent()))));
         }
 
+        // Use multimodal endpoint (same as other adapters — avoids 403 on compatible-mode endpoint)
         Map<String, Object> body = Map.of(
-            "model", config.getTextModel(),
-            "messages", messages,
-            "max_tokens", config.getMaxTokens()
+            "model", config.getModel(),
+            "input", Map.of("messages", msgList),
+            "parameters", Map.of("max_tokens", config.getMaxTokens())
         );
 
         try {
             String resp = restClient.post()
-                    .uri(config.getTextUrl())
+                    .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
@@ -199,10 +199,17 @@ public class AiAnalysisService {
 
             log.debug("AI 原始响应: {}", resp);
             Map<String, Object> root = objectMapper.readValue(resp, new TypeReference<>() {});
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) root.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
-                return (String) msg.get("content");
+            // Parse multimodal response: output.choices[0].message.content[0].text
+            Map<String, Object> output = (Map<String, Object>) root.get("output");
+            if (output != null) {
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) output.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+                    List<Map<String, Object>> content = (List<Map<String, Object>>) msg.get("content");
+                    if (content != null && !content.isEmpty()) {
+                        return (String) content.get(0).get("text");
+                    }
+                }
             }
             return "抱歉，AI 分析服务暂时不可用，请稍后重试。";
         } catch (Exception e) {
