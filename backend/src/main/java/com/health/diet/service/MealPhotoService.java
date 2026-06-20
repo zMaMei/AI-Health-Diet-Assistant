@@ -84,18 +84,19 @@ public class MealPhotoService {
 
     /**
      * 将上传的图片字节保存到磁盘，返回相对路径。
-     * 目录结构: uploads/diet-images/{yyyy}/{MM}/{dd}/{uuid}_{foodName}.jpg
+     * 目录结构: uploads/diet-images/{userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{uuid}.jpg
      */
-    public String saveImageToDisk(byte[] imageBytes, String foodName) throws IOException {
+    public String saveImageToDisk(byte[] imageBytes, Long userId) throws IOException {
         LocalDate today = LocalDate.now();
-        String datePath = String.format("%04d/%02d/%02d", today.getYear(), today.getMonthValue(), today.getDayOfMonth());
+        String datePath = String.format("%d/%04d/%02d/%02d",
+                userId, today.getYear(), today.getMonthValue(), today.getDayOfMonth());
         Path dir = UPLOAD_ROOT.resolve(datePath);
         Files.createDirectories(dir);
 
-        // 清理食物名称用作文件名
-        String safeName = foodName.replaceAll("[\\\\/:*?\"<>|]", "").substring(0, Math.min(10, foodName.length()));
         String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String filename = uuid + "_" + safeName + ".jpg";
+        String dateStr = String.format("%04d-%02d-%02d",
+                today.getYear(), today.getMonthValue(), today.getDayOfMonth());
+        String filename = dateStr + "-" + userId + "-" + uuid + ".jpg";
         Path filePath = dir.resolve(filename);
 
         Files.write(filePath, imageBytes);

@@ -6,6 +6,7 @@ import com.health.diet.dto.vo.FoodRecognizeResultVO.NutritionPreview;
 import com.health.diet.service.FoodRecognitionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,7 +31,8 @@ public class FoodRecognitionController {
      * Returns imageUrl so the frontend can later associate the photo with the meal.
      */
     @PostMapping("/recognize")
-    public ApiResponse<FoodRecognizeResultVO> recognize(@RequestParam("image") MultipartFile file) {
+    public ApiResponse<FoodRecognizeResultVO> recognize(@RequestParam("image") MultipartFile file,
+                                                         HttpServletRequest request) {
         if (file.isEmpty()) {
             return ApiResponse.error(400, "图片文件不能为空");
         }
@@ -39,10 +41,11 @@ public class FoodRecognitionController {
             log.info("Received image for recognition: name={}, size={}, type={}",
                     file.getOriginalFilename(), file.getSize(), file.getContentType());
 
+            Long userId = (Long) request.getAttribute("userId");
             byte[] imageBytes = file.getBytes();
 
             // ① 先保存照片到磁盘
-            String imageUrl = foodRecognitionService.saveImage(imageBytes);
+            String imageUrl = foodRecognitionService.saveImage(imageBytes, userId);
 
             // ② AI 识别
             FoodRecognizeResultVO result = foodRecognitionService.recognizeImage(

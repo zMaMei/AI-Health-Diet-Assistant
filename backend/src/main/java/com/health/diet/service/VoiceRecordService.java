@@ -50,7 +50,7 @@ public class VoiceRecordService {
     public VoiceParseResultVO parseVoice(Long userId, byte[] audioBytes, String contentType,
                                           Integer durationSeconds) throws IOException {
         // ① 保存音频到磁盘
-        String audioUrl = saveAudioToDisk(audioBytes);
+        String audioUrl = saveAudioToDisk(audioBytes, userId);
 
         // ② 语音→文字
         String transcribed = speechToTextAdapter.transcribe(audioBytes, contentType);
@@ -147,17 +147,19 @@ public class VoiceRecordService {
 
     /**
      * 保存音频字节到磁盘，返回相对路径。
-     * 目录: uploads/voice/{yyyy}/{MM}/{dd}/{uuid}.webm
+     * 目录: uploads/voice/{userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{uuid}.webm
      */
-    private String saveAudioToDisk(byte[] audioBytes) throws IOException {
+    private String saveAudioToDisk(byte[] audioBytes, Long userId) throws IOException {
         LocalDate today = LocalDate.now();
-        String datePath = String.format("%04d/%02d/%02d",
-                today.getYear(), today.getMonthValue(), today.getDayOfMonth());
+        String datePath = String.format("%d/%04d/%02d/%02d",
+                userId, today.getYear(), today.getMonthValue(), today.getDayOfMonth());
         Path dir = UPLOAD_ROOT.resolve(datePath);
         Files.createDirectories(dir);
 
         String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String filename = uuid + ".webm";
+        String dateStr = String.format("%04d-%02d-%02d",
+                today.getYear(), today.getMonthValue(), today.getDayOfMonth());
+        String filename = dateStr + "-" + userId + "-" + uuid + ".webm";
         Path filePath = dir.resolve(filename);
 
         Files.write(filePath, audioBytes);

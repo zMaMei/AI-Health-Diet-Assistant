@@ -137,8 +137,8 @@ public class FoodRecognitionService {
     /**
      * 保存上传的图片到磁盘，返回相对路径。
      */
-    public String saveImage(byte[] imageBytes) throws IOException {
-        return mealPhotoService.saveImageToDisk(imageBytes, "food");
+    public String saveImage(byte[] imageBytes, Long userId) throws IOException {
+        return mealPhotoService.saveImageToDisk(imageBytes, userId);
     }
 
     private BigDecimal nvl(BigDecimal val) {
