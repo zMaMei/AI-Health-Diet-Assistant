@@ -88,8 +88,9 @@ public class AiAnalysisService {
         aiMsg.setContent(aiReply);
         messageRepo.save(aiMsg);
 
-        // 7. 构建返回
-        return buildVO(conv.getId(), List.of(aiMsg));
+        // 7. 加载全部消息并返回
+        List<AiMessage> allMessages = messageRepo.findByConversationIdOrderByCreatedAtAsc(conv.getId());
+        return buildVO(conv.getId(), allMessages);
     }
 
     public AiChatVO getConversation(Long userId, LocalDate date) {
