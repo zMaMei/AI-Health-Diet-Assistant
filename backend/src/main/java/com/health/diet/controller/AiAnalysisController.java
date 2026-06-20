@@ -24,11 +24,12 @@ public class AiAnalysisController {
         this.aiAnalysisService = aiAnalysisService;
     }
 
-    @PostMapping("/chat")
-    public ApiResponse<AiChatVO> chat(@RequestBody AiChatCommand command,
-                                      HttpServletRequest request) {
+    @PostMapping("/analyze-diet")
+    public ApiResponse<AiChatVO> analyzeDiet(@RequestBody AiChatCommand command,
+                                              HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        log.info("POST /api/ai/chat — AI对话: userId={}, date={}", userId, command.getDate());
+        log.info("POST /api/ai/analyze-diet — userId={}, date={}, message={}",
+                userId, command.getDate(), command.getMessage());
         AiChatVO result = aiAnalysisService.chat(userId, command);
         return ApiResponse.success(result);
     }
