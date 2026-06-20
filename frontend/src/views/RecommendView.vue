@@ -102,6 +102,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api/index.js'
+import toast from '../toast.js'
 
 const recommendations = ref([])
 const loading = ref(false)
@@ -136,7 +137,7 @@ async function dislike(recommendationId) {
       recommendations.value = recommendations.value.filter(r => r.id !== recommendationId)
     }
   } catch (e) {
-    alert('操作失败')
+    toast.show('操作失败，请稍后重试')
   }
 }
 

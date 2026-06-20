@@ -528,9 +528,11 @@ const voiceCheckedCount = computed(() =>
 )
 
 let voiceMediaRecorder = null
+let voiceStream = null
 let voiceChunks = []
 let voiceTimer = null
 let voiceStartTime = null
+let voiceCancelOnStop = false
 
 // ==================== Manual Modal State ====================
 const showManualModal = ref(false)
@@ -719,7 +721,7 @@ async function saveFromPhoto() {
   }
 
   photoSaving.value = false
-  if (failed > 0) alert(`保存完成：${saved} 种成功，${failed} 种失败`)
+  if (failed > 0) toast.show(`保存完成：${saved} 种成功，${failed} 种失败`)
   closePhotoModal()
   await fetchData()
   await checkWarnings()
@@ -755,8 +757,10 @@ function closeVoiceModal() {
 
 async function startVoiceRecord() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    voiceMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+    cleanupVoiceRecorder()
+    voiceCancelOnStop = false
+    voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    voiceMediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' })
     voiceChunks = []
 
     voiceMediaRecorder.ondataavailable = (e) => {
@@ -764,7 +768,12 @@ async function startVoiceRecord() {
     }
 
     voiceMediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop())
+      stopVoiceStream()
+      if (voiceCancelOnStop) {
+        voiceCancelOnStop = false
+        voiceChunks = []
+        return
+      }
       // Auto trigger analysis after recording stops
       voiceAnalyzeBlob()
     }
@@ -859,17 +868,27 @@ async function deleteVoiceRecord(id) {
     await fetchData()
   } catch (e) {
     console.error('删除语音记录失败', e)
-    alert('删除失败')
+    toast.show('删除失败，请稍后重试')
   }
 }
 
 function cleanupVoiceRecorder() {
   if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null }
   if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+    voiceCancelOnStop = true
     voiceMediaRecorder.stop()
+  } else {
+    stopVoiceStream()
   }
   voiceMediaRecorder = null
   voiceChunks = []
+}
+
+function stopVoiceStream() {
+  if (voiceStream) {
+    voiceStream.getTracks().forEach(t => t.stop())
+    voiceStream = null
+  }
 }
 
 async function saveFromVoice() {
@@ -912,7 +931,7 @@ async function saveFromVoice() {
   }
 
   voiceSaving.value = false
-  if (failed > 0) alert(`保存完成：${saved} 种成功，${failed} 种失败`)
+  if (failed > 0) toast.show(`保存完成：${saved} 种成功，${failed} 种失败`)
   closeVoiceModal()
   await fetchData()
   await checkWarnings()
@@ -993,7 +1012,7 @@ async function saveManual() {
     await checkWarnings()
   } catch (e) {
     console.error('手动保存失败', e)
-    alert('保存失败：' + (e?.response?.data?.message || e.message || '未知错误'))
+    toast.show('保存失败：' + (e?.response?.data?.message || e.message || '未知错误'))
   } finally {
     manualSaving.value = false
   }
@@ -1022,7 +1041,7 @@ async function saveEdit() {
     await checkWarnings()
   } catch (e) {
     console.error('编辑保存失败', e)
-    alert('保存失败：' + (e?.response?.data?.message || e.message || '未知错误'))
+    toast.show('保存失败：' + (e?.response?.data?.message || e.message || '未知错误'))
   }
 }
 

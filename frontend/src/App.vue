@@ -20,6 +20,10 @@
         <span class="nav-icon">📊</span>
         <span class="nav-label">分析</span>
       </router-link>
+      <router-link to="/score" class="nav-item" active-class="active">
+        <span class="nav-icon">⭐</span>
+        <span class="nav-label">评分</span>
+      </router-link>
       <router-link to="/recommend" class="nav-item" active-class="active">
         <span class="nav-icon">🍽️</span>
         <span class="nav-label">推荐</span>
