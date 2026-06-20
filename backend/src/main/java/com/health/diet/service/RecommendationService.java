@@ -80,11 +80,15 @@ public class RecommendationService {
         LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
 
         // 1. Check today's cache
-        List<Recommendation> cached = recommendationRepository
-                .findByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
-        if (!cached.isEmpty()) {
-            log.info("今日推荐命中缓存: userId={}, count={}", userId, cached.size());
-            return cached.stream().map(this::toVO).toList();
+        try {
+            List<Recommendation> cached = recommendationRepository
+                    .findByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
+            if (!cached.isEmpty()) {
+                log.info("今日推荐命中缓存: userId={}, count={}", userId, cached.size());
+                return cached.stream().map(this::toVO).toList();
+            }
+        } catch (Exception e) {
+            log.warn("读取今日推荐缓存失败，将重新生成: {}", e.getMessage());
         }
 
         return generateAndSave(userId);
@@ -98,8 +102,12 @@ public class RecommendationService {
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
 
-        recommendationRepository.deleteByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
-        log.info("已清除今日推荐缓存: userId={}", userId);
+        try {
+            recommendationRepository.deleteByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
+            log.info("已清除今日推荐缓存: userId={}", userId);
+        } catch (Exception e) {
+            log.warn("清除今日推荐缓存失败: {}", e.getMessage());
+        }
         return generateAndSave(userId);
     }
 
@@ -115,7 +123,13 @@ public class RecommendationService {
         Map<String, BigDecimal> intake = getTodayIntake(userId);
 
         // 4. Load all recipes
-        List<Recipe> allRecipes = recipeRepository.findAll();
+        List<Recipe> allRecipes;
+        try {
+            allRecipes = recipeRepository.findAll();
+        } catch (Exception e) {
+            log.error("加载菜谱库失败: {}", e.getMessage());
+            return List.of();
+        }
         if (allRecipes.isEmpty()) {
             log.warn("菜谱库为空，无法生成推荐");
             return List.of();
@@ -126,7 +140,12 @@ public class RecommendationService {
             return generateByAI(userId, profile, thresholds, intake, allRecipes);
         } catch (Exception e) {
             log.warn("AI 推荐失败，降级为规则引擎: {}", e.getMessage());
-            return generateByRules(userId, profile, allRecipes);
+            try {
+                return generateByRules(userId, profile, allRecipes);
+            } catch (Exception e2) {
+                log.error("规则引擎推荐也失败: {}", e2.getMessage());
+                return List.of();
+            }
         }
     }
 
@@ -367,8 +386,19 @@ public class RecommendationService {
     // ── VO mapping ─────────────────────────────────────────────────
 
     private RecommendationVO toVO(Recommendation rec) {
-        Recipe recipe = recipeRepository.findById(rec.getRecipeId()).orElse(null);
-        return toVO(rec, recipe);
+        try {
+            Recipe recipe = recipeRepository.findById(rec.getRecipeId()).orElse(null);
+            return toVO(rec, recipe);
+        } catch (Exception e) {
+            log.warn("加载推荐关联食谱失败 recipeId={}: {}", rec.getRecipeId(), e.getMessage());
+            RecommendationVO vo = new RecommendationVO();
+            vo.setId(rec.getId());
+            vo.setRecipeId(rec.getRecipeId());
+            vo.setRecipeName("(食谱数据加载失败)");
+            vo.setReason(rec.getReason());
+            vo.setMatchScore(rec.getScore());
+            return vo;
+        }
     }
 
     private RecommendationVO toVO(Recommendation rec, Recipe recipe) {
