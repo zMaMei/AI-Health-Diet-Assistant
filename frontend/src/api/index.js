@@ -61,8 +61,8 @@ export default {
   getRecommendations() {
     return api.get('/recommendations/today')
   },
-  submitFeedback(recommendationId, feedback) {
-    return api.post('/recommendations/feedback', { recommendationId, feedback })
+  refreshRecommendations() {
+    return api.post('/recommendations/refresh', {}, { timeout: 30000 })
   },
 
   // Food recognition (image upload)

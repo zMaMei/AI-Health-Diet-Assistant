@@ -1,58 +1,82 @@
 <template>
   <div class="recommend-page">
-    <div v-if="loading" class="loading">正在为您生成推荐...</div>
+    <!-- Header -->
+    <div class="page-header">
+      <h2 class="page-title">今日推荐</h2>
+      <button
+        class="btn btn-outline btn-refresh"
+        :disabled="refreshing"
+        @click="refreshAll"
+      >
+        <span v-if="refreshing" class="spinner"></span>
+        {{ refreshing ? '生成中...' : '🔄 换一批' }}
+      </button>
+    </div>
 
-    <template v-else-if="recommendations.length">
-      <div class="card" v-for="rec in recommendations" :key="rec.id">
+    <!-- Loading -->
+    <div v-if="loading" class="loading-state">
+      <div class="loading-icon">🤖</div>
+      <p>AI 正在为您生成个性化推荐...</p>
+      <p class="loading-sub">正在分析您的营养缺口和口味偏好</p>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="errorMsg" class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <p>{{ errorMsg }}</p>
+      <button class="btn btn-primary" @click="fetchRecommendations" style="margin-top:12px">重试</button>
+    </div>
+
+    <!-- Empty -->
+    <div v-else-if="!recommendations.length" class="empty-state">
+      <div class="empty-icon">🍽️</div>
+      <p>暂无推荐菜谱</p>
+      <p style="font-size:12px;color:#bbb;margin-top:4px">请先在"我的"页面设置健康目标和偏好</p>
+    </div>
+
+    <!-- Cards -->
+    <template v-else>
+      <div class="card rec-card" v-for="rec in recommendations" :key="rec.id">
+        <!-- Title row -->
         <div class="rec-header">
           <h3 class="rec-name">{{ rec.recipeName }}</h3>
-          <div class="rec-match">
-            <span class="match-dot" :style="{ background: matchColor(rec.matchScore) }"></span>
-            {{ rec.matchScore }}% 匹配
+          <div class="rec-tags-row">
+            <span class="tag tag-green" v-for="tag in parseTags(rec.tags)" :key="tag">{{ tag }}</span>
           </div>
         </div>
 
-        <div class="rec-tags">
-          <span class="tag tag-green" v-for="tag in parseTags(rec.tags)" :key="tag">{{ tag }}</span>
-        </div>
-
+        <!-- Nutrition bars -->
         <div class="rec-nutrition">
-          <span>🔥 {{ Number(rec.calorie).toFixed(0) }} kcal</span>
-          <span>🥩 {{ Number(rec.protein).toFixed(1) }}g</span>
-          <span>🧈 {{ Number(rec.fat).toFixed(1) }}g</span>
-          <span>🌾 {{ Number(rec.carbohydrate).toFixed(1) }}g</span>
+          <div class="nut-row" v-for="nut in nutBars(rec)" :key="nut.label">
+            <span class="nut-label">{{ nut.icon }} {{ nut.label }}</span>
+            <div class="nut-bar-track">
+              <div
+                class="nut-bar-fill"
+                :style="{ width: nut.pct + '%', background: nut.color }"
+              ></div>
+            </div>
+            <span class="nut-value">{{ nut.recipeVal }}/{{ nut.threshold }}{{ nut.unit }}</span>
+          </div>
         </div>
 
+        <!-- Ingredients preview -->
         <div class="rec-ingredients">
-          <strong>食材：</strong>{{ rec.ingredients }}
+          <strong>🥬 食材：</strong>{{ previewIngredients(rec.ingredients) }}
         </div>
 
+        <!-- AI Reason -->
         <div class="rec-reason">
-          <strong>推荐理由：</strong>{{ rec.reason }}
+          <strong>💡 推荐理由：</strong>{{ rec.reason }}
         </div>
 
+        <!-- Actions -->
         <div class="rec-actions">
           <button class="btn btn-sm btn-outline" @click="viewDetail(rec)">
             📋 查看详情
           </button>
-          <button class="btn btn-sm btn-outline" @click="dislike(rec.id)">
-            👎 不喜欢
-          </button>
         </div>
       </div>
     </template>
-
-    <div v-else class="empty-state">
-      <div class="empty-icon">🍽️</div>
-      <p>暂无推荐菜谱</p>
-      <p style="font-size:12px;color:#bbb;margin-top:4px">请先在"我的"页面设置健康目标和偏好</p>
-      <button class="btn btn-primary" @click="fetchRecommendations" style="margin-top:12px">刷新推荐</button>
-    </div>
-
-    <!-- No more message -->
-    <div v-if="noMore && recommendations.length > 0" class="no-more">
-      已经到底了，没有更多推荐~
-    </div>
 
     <!-- Recipe Detail Modal -->
     <div class="modal-overlay" v-if="showDetailModal" @click.self="showDetailModal=false">
@@ -63,20 +87,28 @@
         </div>
         <div class="detail-nutrition">
           <div class="detail-nut-item">
-            <span class="nut-value">{{ Number(detailRecipe?.calorie).toFixed(0) }}</span>
+            <span class="nut-value">{{ fmt(detailRecipe?.calorie) }}</span>
             <span class="nut-label">热量(kcal)</span>
           </div>
           <div class="detail-nut-item">
-            <span class="nut-value">{{ Number(detailRecipe?.protein).toFixed(1) }}</span>
+            <span class="nut-value">{{ fmt(detailRecipe?.protein) }}</span>
             <span class="nut-label">蛋白质(g)</span>
           </div>
           <div class="detail-nut-item">
-            <span class="nut-value">{{ Number(detailRecipe?.fat).toFixed(1) }}</span>
+            <span class="nut-value">{{ fmt(detailRecipe?.fat) }}</span>
             <span class="nut-label">脂肪(g)</span>
           </div>
           <div class="detail-nut-item">
-            <span class="nut-value">{{ Number(detailRecipe?.carbohydrate).toFixed(1) }}</span>
+            <span class="nut-value">{{ fmt(detailRecipe?.carbohydrate) }}</span>
             <span class="nut-label">碳水(g)</span>
+          </div>
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ fmt(detailRecipe?.sugar) }}</span>
+            <span class="nut-label">糖分(g)</span>
+          </div>
+          <div class="detail-nut-item">
+            <span class="nut-value">{{ fmt(detailRecipe?.sodium) }}</span>
+            <span class="nut-label">钠(mg)</span>
           </div>
         </div>
         <div class="detail-section">
@@ -106,39 +138,95 @@ import toast from '../toast.js'
 
 const recommendations = ref([])
 const loading = ref(false)
-const noMore = ref(false)
+const refreshing = ref(false)
+const errorMsg = ref('')
 const showDetailModal = ref(false)
 const detailRecipe = ref(null)
 
+// Default thresholds (used when profile not yet loaded — backend provides real ones)
+const defaultThresholds = {
+  calorie: 2000, protein: 60, fat: 65, carbohydrate: 300, sugar: 50, sodium: 2400
+}
+
 async function fetchRecommendations() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const res = await api.getRecommendations()
-    recommendations.value = res || []
-    noMore.value = recommendations.value.length === 0
+    const data = res.data?.data
+    if (Array.isArray(data)) {
+      recommendations.value = data
+    } else {
+      recommendations.value = []
+    }
   } catch (e) {
     console.error(e)
+    if (e.response?.status >= 500) {
+      errorMsg.value = 'AI 推荐服务繁忙，请稍后重试'
+    } else if (e.response?.data?.message) {
+      errorMsg.value = e.response.data.message
+    } else {
+      errorMsg.value = '加载推荐失败，请检查网络'
+    }
   } finally {
     loading.value = false
   }
 }
 
-async function dislike(recommendationId) {
+async function refreshAll() {
+  refreshing.value = true
   try {
-    const res = await api.submitFeedback(recommendationId, 'dislike')
-    if (res) {
-      // Replace the disliked one with a new recommendation
-      const idx = recommendations.value.findIndex(r => r.id === recommendationId)
-      if (idx >= 0) {
-        recommendations.value[idx] = res
-      }
+    const res = await api.refreshRecommendations()
+    const data = res.data?.data
+    if (Array.isArray(data)) {
+      recommendations.value = data
+      toast.show('已为您换一批推荐')
     } else {
-      // Remove if no replacement
-      recommendations.value = recommendations.value.filter(r => r.id !== recommendationId)
+      recommendations.value = []
     }
   } catch (e) {
-    toast.show('操作失败，请稍后重试')
+    console.error(e)
+    if (e.response?.status >= 500) {
+      toast.show('AI 推荐服务繁忙，请稍后重试')
+    } else if (e.response?.data?.message) {
+      toast.show(e.response.data.message)
+    } else {
+      toast.show('刷新失败，请稍后重试')
+    }
+  } finally {
+    refreshing.value = false
   }
+}
+
+function nutBars(rec) {
+  const nutrients = [
+    { key: 'calorie', label: '热量', icon: '🔥', unit: 'kcal', color: '#FF9800' },
+    { key: 'protein', label: '蛋白质', icon: '🥩', unit: 'g', color: '#4CAF50' },
+    { key: 'fat', label: '脂肪', icon: '🧈', unit: 'g', color: '#FFC107' },
+    { key: 'carbohydrate', label: '碳水', icon: '🌾', unit: 'g', color: '#2196F3' },
+  ]
+  return nutrients.map(n => {
+    const recipeVal = Number(rec[n.key]) || 0
+    const threshold = defaultThresholds[n.key] || 2000
+    const pct = threshold > 0 ? Math.min(100, (recipeVal / threshold) * 100) : 0
+    return {
+      ...n,
+      recipeVal: recipeVal.toFixed(0),
+      threshold,
+      pct: Math.round(pct),
+    }
+  })
+}
+
+function previewIngredients(ingredients) {
+  if (!ingredients) return ''
+  const parts = ingredients.split(',')
+  return parts.slice(0, 4).join('、') + (parts.length > 4 ? '...' : '')
+}
+
+function fmt(val) {
+  const n = Number(val)
+  return isNaN(n) ? '-' : n.toFixed(1)
 }
 
 function viewDetail(rec) {
@@ -156,47 +244,104 @@ function parseSteps(steps) {
   return steps.split('\n').filter(Boolean)
 }
 
-function matchColor(score) {
-  if (!score) return '#999'
-  return score >= 70 ? '#4CAF50' : score >= 40 ? '#FF9800' : '#f44336'
-}
-
 onMounted(fetchRecommendations)
 </script>
 
 <style scoped>
-.rec-header {
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
-.rec-name { font-size: 16px; font-weight: 600; }
-.rec-match {
-  font-size: 12px;
-  color: #666;
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+.btn-refresh {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
-.match-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.spinner {
   display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ccc;
+  border-top-color: #666;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.rec-tags { margin-bottom: 8px; }
+.loading-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: #666;
+}
+.loading-icon { font-size: 48px; margin-bottom: 12px; }
+.loading-sub { font-size: 12px; color: #bbb; margin-top: 4px; }
 
-.rec-nutrition {
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Card */
+.rec-card { margin-bottom: 12px; }
+.rec-header {
   display: flex;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.rec-name { font-size: 16px; font-weight: 600; margin: 0; }
+.rec-tags-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 60%;
+}
+
+/* Nutrition bars */
+.rec-nutrition {
+  margin-bottom: 8px;
+}
+.nut-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.nut-label {
   font-size: 12px;
   color: #666;
-  padding: 8px 0;
-  border-top: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 8px;
+  min-width: 70px;
+}
+.nut-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.nut-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.nut-value {
+  font-size: 11px;
+  color: #999;
+  min-width: 80px;
+  text-align: right;
 }
 
 .rec-ingredients, .rec-reason {
@@ -205,22 +350,13 @@ onMounted(fetchRecommendations)
   margin-bottom: 6px;
   line-height: 1.5;
 }
-
 .rec-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
   margin-top: 8px;
 }
 
-.no-more {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-  font-size: 13px;
-}
-
-/* Recipe detail modal */
+/* Detail modal (same pattern as before, extended) */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -243,7 +379,7 @@ onMounted(fetchRecommendations)
 .recipe-detail .detail-tags { margin-bottom: 12px; }
 .detail-nutrition {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   padding: 12px;
   background: #f9f9f9;
@@ -253,8 +389,8 @@ onMounted(fetchRecommendations)
 .detail-nut-item {
   text-align: center;
 }
-.nut-value { font-size: 18px; font-weight: 700; color: #4CAF50; display: block; }
-.nut-label { font-size: 11px; color: #999; }
+.detail-nutrition .nut-value { font-size: 16px; font-weight: 700; color: #4CAF50; display: block; }
+.detail-nutrition .nut-label { font-size: 11px; color: #999; }
 .detail-section {
   margin-bottom: 12px;
   padding-bottom: 12px;
