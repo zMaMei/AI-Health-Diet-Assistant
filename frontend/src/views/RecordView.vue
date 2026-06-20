@@ -647,7 +647,7 @@ async function startPhotoAnalyze() {
     const formData = new FormData()
     formData.append('image', photoFile.value)
     const res = await api.recognizeFood(formData)
-    const data = res
+    const data = res.data?.data
     if (data?.candidates?.length) {
       photoCandidates.value = data.candidates.map(c => ({
         ...c,
