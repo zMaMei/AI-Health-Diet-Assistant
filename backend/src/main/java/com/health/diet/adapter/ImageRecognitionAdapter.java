@@ -186,8 +186,14 @@ public class ImageRecognitionAdapter {
         // 去除 markdown 代码块
         jsonText = cleanJsonText(jsonText);
 
-        Map<String, Object> foodsRoot = objectMapper.readValue(jsonText, new TypeReference<>() {});
-        List<Map<String, Object>> foods = (List<Map<String, Object>>) foodsRoot.get("foods");
+        // AI 可能返回 {"foods":[...]} 对象，也可能直接返回 [...] 数组
+        List<Map<String, Object>> foods;
+        if (jsonText.trim().startsWith("[")) {
+            foods = objectMapper.readValue(jsonText, new TypeReference<List<Map<String, Object>>>() {});
+        } else {
+            Map<String, Object> foodsRoot = objectMapper.readValue(jsonText, new TypeReference<>() {});
+            foods = (List<Map<String, Object>>) foodsRoot.get("foods");
+        }
         if (foods == null || foods.isEmpty()) {
             log.warn("API 未返回食物数据");
             return List.of();
