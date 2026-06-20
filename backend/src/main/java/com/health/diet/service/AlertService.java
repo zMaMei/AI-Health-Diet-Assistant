@@ -35,13 +35,19 @@ public class AlertService {
     private static final Map<String, String> NUTRIENT_NAMES = Map.of(
             "calorie", "热量",
             "sugar", "糖分",
-            "sodium", "钠"
+            "sodium", "钠",
+            "protein", "蛋白质",
+            "fat", "脂肪",
+            "carb", "碳水"
     );
 
     private static final Map<String, String> NUTRIENT_SUGGESTIONS = Map.of(
             "calorie", "建议选择低热量食物，增加运动量",
             "sugar", "建议选择无糖或低糖食品",
-            "sodium", "建议减少盐分摄入，多吃新鲜蔬果"
+            "sodium", "建议减少盐分摄入，多吃新鲜蔬果",
+            "protein", "建议增加优质蛋白摄入（鸡蛋、鱼虾、豆制品）",
+            "fat", "建议控制油脂摄入，少吃油炸和肥肉",
+            "carb", "建议调整主食结构，增加粗粮比例"
     );
 
     private static final Logger log = LoggerFactory.getLogger(AlertService.class);
@@ -98,11 +104,17 @@ public class AlertService {
         BigDecimal calorieTotal = BigDecimal.ZERO;
         BigDecimal sugarTotal = BigDecimal.ZERO;
         BigDecimal sodiumTotal = BigDecimal.ZERO;
+        BigDecimal proteinTotal = BigDecimal.ZERO;
+        BigDecimal fatTotal = BigDecimal.ZERO;
+        BigDecimal carbTotal = BigDecimal.ZERO;
 
         for (DietRecord record : records) {
             calorieTotal = calorieTotal.add(nvl(record.getCalorie()));
             sugarTotal = sugarTotal.add(nvl(record.getSugar()));
             sodiumTotal = sodiumTotal.add(nvl(record.getSodium()));
+            proteinTotal = proteinTotal.add(nvl(record.getProtein()));
+            fatTotal = fatTotal.add(nvl(record.getFat()));
+            carbTotal = carbTotal.add(nvl(record.getCarbohydrate()));
         }
 
         for (AlertRule rule : rules) {
@@ -112,6 +124,9 @@ public class AlertService {
                 case "calorie" -> calorieTotal;
                 case "sugar" -> sugarTotal;
                 case "sodium" -> sodiumTotal;
+                case "protein" -> proteinTotal;
+                case "fat" -> fatTotal;
+                case "carb" -> carbTotal;
                 default -> null;
             };
 
@@ -171,7 +186,7 @@ public class AlertService {
         String gender = profile.getGender() != null ? profile.getGender() : "未知";
 
         String prompt = String.format("""
-            你是一位专业的营养师。请根据以下用户档案，综合分给出每日摄入上限建议。
+            你是一位专业的营养师。请根据以下用户档案，综合分析给出每日摄入上限/目标建议。
             - 年龄：%s 岁
             - 性别：%s
             - 身高：%s cm
@@ -181,11 +196,14 @@ public class AlertService {
             - 慢性病/特殊饮食：%s
 
             请严格以 JSON 格式返回，不要包含其他文字：
-            {"calorie": 数字(kcal), "sugar": 数字(g), "sodium": 数字(mg)}
+            {"calorie": 数字(kcal), "sugar": 数字(g), "sodium": 数字(mg), "protein": 数字(g), "fat": 数字(g), "carb": 数字(g)}
             其中：
             - calorie：每日热量上限
             - sugar：每日糖分上限
             - sodium：每日钠上限
+            - protein：每日蛋白质目标(g)
+            - fat：每日脂肪上限(g)
+            - carb：每日碳水目标(g)
             """, age, gender, height, weight, bmiStr, goal, warning);
 
         ThresholdAnalysisAdapter.ThresholdResult result = thresholdAnalysisAdapter.analyze(prompt);
@@ -195,9 +213,13 @@ public class AlertService {
         upsertRule(existingRules, userId, "calorie", result.calorie());
         upsertRule(existingRules, userId, "sugar", result.sugar());
         upsertRule(existingRules, userId, "sodium", result.sodium());
+        if (result.protein() != null) upsertRule(existingRules, userId, "protein", result.protein());
+        if (result.fat() != null) upsertRule(existingRules, userId, "fat", result.fat());
+        if (result.carb() != null) upsertRule(existingRules, userId, "carb", result.carb());
 
-        log.info("AI 预警阈值分析完成: userId={}, calorie={}, sugar={}, sodium={}",
-                userId, result.calorie(), result.sugar(), result.sodium());
+        log.info("AI 预警阈值分析完成: userId={}, calorie={}, sugar={}, sodium={}, protein={}, fat={}, carb={}",
+                userId, result.calorie(), result.sugar(), result.sodium(),
+                result.protein(), result.fat(), result.carb());
 
         return listRules(userId);
     }

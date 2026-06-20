@@ -319,8 +319,8 @@ const tasteOptions = ['清淡', '中式', '西式', '日式', '辣味', '酸甜'
 const tabooOptions = ['海鲜', '花生', '牛奶', '鸡蛋', '豆制品', ' gluten', '辛辣']
 const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风']
 
-const nutrientLabels = { calorie: '每日热量上限', sugar: '每日糖分上限', sodium: '每日钠上限' }
-const nutrientUnits = { calorie: 'kcal', sugar: 'g', sodium: 'mg' }
+const nutrientLabels = { calorie: '每日热量上限', sugar: '每日糖分上限', sodium: '每日钠上限', protein: '每日蛋白质目标', fat: '每日脂肪上限', carb: '每日碳水目标' }
+const nutrientUnits = { calorie: 'kcal', sugar: 'g', sodium: 'mg', protein: 'g', fat: 'g', carb: 'g' }
 
 const form = ref({
   goal: '均衡',
@@ -521,7 +521,7 @@ async function fetchData() {
       api.getProfile(),
       api.getAlertRules(),
     ])
-    const p = profileRes
+    const p = profileRes.data?.data
     profile.value = p
     form.value.goal = p.goal || '均衡'
     form.value.age = p.age
@@ -533,7 +533,7 @@ async function fetchData() {
     form.value.gender = p.gender || ''
     syncWarningFromForm()
 
-    alertRules.value = rulesRes || []
+    alertRules.value = rulesRes.data?.data || []
   } catch (e) {
     console.error(e)
   } finally {
@@ -678,23 +678,26 @@ function cancelEditTag() {
 }
 
 // ==================== 删除自定义标签 ====================
-function deleteTaste(tag) {
+async function deleteTaste(tag) {
   if (!confirm(`确定删除"${tag}"吗？`)) return
   const i = selectedTastes.value.indexOf(tag)
   if (i >= 0) selectedTastes.value.splice(i, 1)
+  await saveProfile()
 }
 
-function deleteTaboo(tag) {
+async function deleteTaboo(tag) {
   if (!confirm(`确定删除"${tag}"吗？`)) return
   const i = selectedTaboos.value.indexOf(tag)
   if (i >= 0) selectedTaboos.value.splice(i, 1)
+  await saveProfile()
 }
 
-function deleteWarning(tag) {
+async function deleteWarning(tag) {
   if (!confirm(`确定删除"${tag}"吗？`)) return
   const i = selectedWarnings.value.indexOf(tag)
   if (i >= 0) selectedWarnings.value.splice(i, 1)
   form.value.warningProfile = selectedWarnings.value.join(',')
+  await saveProfile()
 }
 
 async function analyzeThreshold() {
@@ -711,7 +714,7 @@ async function analyzeThreshold() {
       warningProfile: form.value.warningProfile,
     })
     const res = await api.analyzeAlertRules()
-    alertRules.value = res || []
+    alertRules.value = res.data?.data || []
     toast.show('AI 分析完成，可手动调整后保存')
   } catch (e) {
     toast.show('AI 分析失败，请稍后重试')

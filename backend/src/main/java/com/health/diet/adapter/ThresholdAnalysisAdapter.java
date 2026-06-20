@@ -99,6 +99,10 @@ public class ThresholdAnalysisAdapter {
         BigDecimal calorie = toBigDecimal(map, "calorie");
         BigDecimal sugar = toBigDecimal(map, "sugar");
         BigDecimal sodium = toBigDecimal(map, "sodium");
+        // protein/fat/carb are optional — null if AI doesn't return them
+        BigDecimal protein = toBigDecimal(map, "protein");
+        BigDecimal fat = toBigDecimal(map, "fat");
+        BigDecimal carb = toBigDecimal(map, "carb");
 
         if (calorie == null || sugar == null || sodium == null) {
             throw new RuntimeException("AI 返回数据不完整，缺少必要字段");
@@ -109,7 +113,7 @@ public class ThresholdAnalysisAdapter {
             throw new RuntimeException("AI 返回阈值无效（必须大于 0）");
         }
 
-        return new ThresholdResult(calorie, sugar, sodium);
+        return new ThresholdResult(calorie, sugar, sodium, protein, fat, carb);
     }
 
     @SuppressWarnings("unchecked")
@@ -139,5 +143,6 @@ public class ThresholdAnalysisAdapter {
         return null;
     }
 
-    public record ThresholdResult(BigDecimal calorie, BigDecimal sugar, BigDecimal sodium) {}
+    public record ThresholdResult(BigDecimal calorie, BigDecimal sugar, BigDecimal sodium,
+                                   BigDecimal protein, BigDecimal fat, BigDecimal carb) {}
 }

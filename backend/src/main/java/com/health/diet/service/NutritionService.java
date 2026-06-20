@@ -1,8 +1,10 @@
 package com.health.diet.service;
 
 import com.health.diet.dto.vo.NutritionDailyVO;
+import com.health.diet.entity.AlertRule;
 import com.health.diet.entity.NutritionRecord;
 import com.health.diet.entity.UserProfile;
+import com.health.diet.repository.AlertRuleRepository;
 import com.health.diet.repository.DietRecordRepository;
 import com.health.diet.repository.NutritionRecordRepository;
 import com.health.diet.repository.UserProfileRepository;
@@ -11,8 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class NutritionService {
@@ -20,6 +21,7 @@ public class NutritionService {
     private final DietRecordRepository dietRecordRepository;
     private final NutritionRecordRepository nutritionRecordRepository;
     private final UserProfileRepository userProfileRepository;
+    private final AlertRuleRepository alertRuleRepository;
 
     private static final BigDecimal DEFAULT_CALORIE_GOAL = new BigDecimal("2000");
     private static final BigDecimal DEFAULT_PROTEIN_GOAL = new BigDecimal("60");
@@ -28,10 +30,12 @@ public class NutritionService {
 
     public NutritionService(DietRecordRepository dietRecordRepository,
                             NutritionRecordRepository nutritionRecordRepository,
-                            UserProfileRepository userProfileRepository) {
+                            UserProfileRepository userProfileRepository,
+                            AlertRuleRepository alertRuleRepository) {
         this.dietRecordRepository = dietRecordRepository;
         this.nutritionRecordRepository = nutritionRecordRepository;
         this.userProfileRepository = userProfileRepository;
+        this.alertRuleRepository = alertRuleRepository;
     }
 
     public NutritionDailyVO getDaily(Long userId, LocalDate date) {
@@ -49,18 +53,13 @@ public class NutritionService {
         vo.setSugarTotal(sugar.setScale(2, RoundingMode.HALF_UP));
         vo.setSodiumTotal(sodium.setScale(2, RoundingMode.HALF_UP));
 
-        // Get goals from user profile
-        userProfileRepository.findByUserId(userId).ifPresentOrElse(profile -> {
-            vo.setCalorieGoal(getGoalForProfile(profile, "calorie", DEFAULT_CALORIE_GOAL));
-            vo.setProteinGoal(getGoalForProfile(profile, "protein", DEFAULT_PROTEIN_GOAL));
-            vo.setFatGoal(getGoalForProfile(profile, "fat", DEFAULT_FAT_GOAL));
-            vo.setCarbohydrateGoal(getGoalForProfile(profile, "carb", DEFAULT_CARB_GOAL));
-        }, () -> {
-            vo.setCalorieGoal(DEFAULT_CALORIE_GOAL);
-            vo.setProteinGoal(DEFAULT_PROTEIN_GOAL);
-            vo.setFatGoal(DEFAULT_FAT_GOAL);
-            vo.setCarbohydrateGoal(DEFAULT_CARB_GOAL);
-        });
+        // Get goals: alert_rule 阈值优先 → profile.goal 默认值 → 系统默认值
+        Map<String, BigDecimal> thresholds = getUserThresholds(userId);
+
+        vo.setCalorieGoal(thresholds.getOrDefault("calorie", DEFAULT_CALORIE_GOAL));
+        vo.setProteinGoal(thresholds.getOrDefault("protein", DEFAULT_PROTEIN_GOAL));
+        vo.setFatGoal(thresholds.getOrDefault("fat", DEFAULT_FAT_GOAL));
+        vo.setCarbohydrateGoal(thresholds.getOrDefault("carb", DEFAULT_CARB_GOAL));
 
         // Get weekly trend
         LocalDate weekAgo = date.minusDays(6);
@@ -89,25 +88,30 @@ public class NutritionService {
         return vo;
     }
 
-    private BigDecimal getGoalForProfile(UserProfile profile, String type, BigDecimal defaultGoal) {
-        if ("减脂".equals(profile.getGoal())) {
-            return switch (type) {
-                case "calorie" -> new BigDecimal("1600");
-                case "protein" -> new BigDecimal("70");
-                case "fat" -> new BigDecimal("50");
-                case "carb" -> new BigDecimal("200");
-                default -> defaultGoal;
-            };
-        } else if ("增肌".equals(profile.getGoal())) {
-            return switch (type) {
-                case "calorie" -> new BigDecimal("2500");
-                case "protein" -> new BigDecimal("120");
-                case "fat" -> new BigDecimal("70");
-                case "carb" -> new BigDecimal("350");
-                default -> defaultGoal;
-            };
+    /**
+     * 从 alert_rule 表读取用户设定的阈值，缺失时使用 profile.goal 默认值。
+     */
+    private Map<String, BigDecimal> getUserThresholds(Long userId) {
+        List<AlertRule> rules = alertRuleRepository.findByUserId(userId);
+        Map<String, BigDecimal> thresholds = new HashMap<>();
+
+        for (AlertRule rule : rules) {
+            if (rule.getEnabled()) {
+                thresholds.put(rule.getNutrientType(), rule.getThreshold());
+            }
         }
-        return defaultGoal;
+
+        // 缺失时使用 profile.goal 默认值
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
+        boolean isCut = profile != null && "减脂".equals(profile.getGoal());
+        boolean isGain = profile != null && "增肌".equals(profile.getGoal());
+
+        thresholds.putIfAbsent("calorie", isCut ? new BigDecimal("1600") : isGain ? new BigDecimal("2500") : DEFAULT_CALORIE_GOAL);
+        thresholds.putIfAbsent("protein", isGain ? new BigDecimal("120") : isCut ? new BigDecimal("70") : DEFAULT_PROTEIN_GOAL);
+        thresholds.putIfAbsent("fat", isCut ? new BigDecimal("50") : isGain ? new BigDecimal("70") : DEFAULT_FAT_GOAL);
+        thresholds.putIfAbsent("carb", isCut ? new BigDecimal("200") : isGain ? new BigDecimal("350") : DEFAULT_CARB_GOAL);
+
+        return thresholds;
     }
 
     private String generateSuggestion(NutritionDailyVO vo) {

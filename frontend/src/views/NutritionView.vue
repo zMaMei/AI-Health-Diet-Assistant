@@ -138,25 +138,6 @@
             <span class="tag tag-orange" v-for="r in scoreData.risks" :key="r">{{ r }}</span>
           </div>
         </div>
-        <div class="card" v-if="scoreData.suggestions?.length">
-          <h3 class="card-title">💡 改进建议</h3>
-          <ul class="suggestion-list">
-            <li v-for="(s, i) in scoreData.suggestions" :key="i">{{ s }}</li>
-          </ul>
-        </div>
-        <div class="card" v-if="scoreData.history?.length">
-          <h3 class="card-title">📈 评分趋势</h3>
-          <div class="history-list">
-            <div class="history-item" v-for="h in scoreData.history" :key="h.date">
-              <span class="history-date">{{ formatScoreDate(h.date) }}</span>
-              <div class="history-bar-bg">
-                <div class="history-bar" :style="{ width: h.score + '%' }"
-                     :class="{ good: h.score >= 70, mid: h.score >= 40 && h.score < 70, bad: h.score < 40 }"></div>
-              </div>
-              <span class="history-score">{{ h.score }}</span>
-            </div>
-          </div>
-        </div>
       </template>
       <div v-else-if="scoreLoading" class="loading">评分计算中...</div>
 
@@ -189,10 +170,6 @@
             </div>
           </div>
           <div v-else class="empty-state" style="padding:20px"><p>暂无趋势数据</p></div>
-        </div>
-        <div class="card" v-if="nutrition.suggestion">
-          <h3 class="card-title">💡 饮食建议</h3>
-          <p class="suggestion-text">{{ nutrition.suggestion }}</p>
         </div>
       </template>
       <div v-else class="empty-state"><div class="empty-icon">📊</div><p>暂无营养数据</p></div>
@@ -315,7 +292,7 @@ const mealTypes = [
   { key: '其他', label: '其他', icon: '🍽️' },
 ]
 const sourceLabels = { photo: '拍照', voice: '语音', manual: '手动' }
-const expandedMeals = reactive({ '早餐': true, '午餐': true, '晚餐': false, '夜宵': false, '其他': false })
+const expandedMeals = reactive({ '早餐': false, '午餐': false, '晚餐': false, '夜宵': false, '其他': false })
 
 const groupedRecords = computed(() => {
   const groups = {}
@@ -473,7 +450,8 @@ async function fetchAll() {
     ])
     records.value = (recRes.data?.data) || []
     nutrition.value = (nutRes.data?.data) || null
-    scoreData.value = (scoreRes.data?.data) || null
+    const sd = (scoreRes.data?.data)
+    scoreData.value = (sd && sd.score !== undefined) ? sd : { score: null, strengths: [], risks: [], suggestions: [], history: [] }
 
     // Group photos by meal type
     const photos = {}
@@ -486,11 +464,6 @@ async function fetchAll() {
 
     // Store voice records
     voiceRecords.value = (voiceRes.data?.data) || []
-
-    // Auto-expand meals with records
-    mealTypes.forEach(m => {
-      if (groupedRecords.value[m.key]?.length) expandedMeals[m.key] = true
-    })
 
     // Load conversation history
     const convData = (convRes.data?.data)
@@ -624,21 +597,19 @@ function getPercent(key) {
   return Math.min(100, Math.round(v / g * 100))
 }
 function barHeight(cal) {
-  if (!cal) return 0
-  const max = Math.max(...nutrition.value.trend.map(p => Number(p.calorie)), 2000)
-  return Math.min(100, Number(cal) / max * 100)
+  const c = Number(cal)
+  if (!c || isNaN(c)) return 0
+  const vals = nutrition.value.trend.map(p => Number(p.calorie)).filter(n => !isNaN(n) && n > 0)
+  const max = vals.length ? Math.max(...vals, 2000) : 2000
+  return Math.min(100, c / max * 100)
 }
 function isTodayDate(dateStr) { return dateStr === todayStr }
 function formatDateShort(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00')
+  const parts = dateStr.split('-')
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
   const days = ['日','一','二','三','四','五','六']
   return '周' + days[d.getDay()]
 }
-function formatScoreDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getMonth()+1}/${d.getDate()}`
-}
-
 async function showSourceDetail(nutrient) {
   const info = nutrientKeyMap[nutrient.key]
   sourceDetailTitle.value = `🔍 ${info.label}食物来源`
@@ -793,18 +764,6 @@ onMounted(fetchAll)
 
 .card-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.suggestion-list { list-style: none; }
-.suggestion-list li { padding: 6px 0; font-size: 14px; color: #555; border-bottom: 1px solid #f0f0f0; }
-.suggestion-list li:last-child { border-bottom: none; }
-.history-list { display: flex; flex-direction: column; gap: 8px; }
-.history-item { display: flex; align-items: center; gap: 8px; }
-.history-date { font-size: 12px; color: #999; width: 40px; }
-.history-bar-bg { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
-.history-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
-.history-bar.good { background: #4CAF50; }
-.history-bar.mid { background: #FF9800; }
-.history-bar.bad { background: #f44336; }
-.history-score { font-size: 12px; color: #666; width: 30px; text-align: right; }
 
 /* ---- Nutrition ---- */
 .nutrient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -830,7 +789,6 @@ onMounted(fetchAll)
 }
 .bar.today { background: linear-gradient(to top, #FFB74D, #FF9800); }
 .bar-label { font-size: 10px; color: #999; margin-top: 4px; }
-.suggestion-text { font-size: 14px; line-height: 1.6; color: #555; }
 
 /* ---- AI entry card ---- */
 .ai-entry-card {
