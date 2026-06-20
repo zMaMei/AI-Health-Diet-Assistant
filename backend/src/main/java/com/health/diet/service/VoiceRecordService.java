@@ -15,8 +15,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,6 +27,12 @@ public class VoiceRecordService {
     private static final Logger log = LoggerFactory.getLogger(VoiceRecordService.class);
 
     private static final Path UPLOAD_ROOT = Paths.get("uploads", "voice");
+    private static final Path TEMP_DIR = UPLOAD_ROOT.resolve("temp");
+
+    private static final Map<String, String> MEAL_TYPE_EN = Map.of(
+        "早餐", "breakfast", "午餐", "lunch", "晚餐", "dinner",
+        "夜宵", "night", "其他", "other"
+    );
 
     private final SpeechToTextAdapter speechToTextAdapter;
     private final FoodEntityParserAdapter foodEntityParserAdapter;
@@ -110,24 +118,31 @@ public class VoiceRecordService {
                 .stream().map(this::toVO).toList();
     }
 
-    /** 更新语音记录的餐次类型（用户确认保存后回填） */
+    /** 更新语音记录的餐次类型（用户确认保存后回填），同时将音频文件从临时目录移到最终位置 */
     public void updateMealType(Long id, String mealType, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
-        // 验证所有权
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权修改此语音记录");
         }
         record.setMealType(mealType);
+
+        // 从临时目录移动到最终位置
+        String oldPath = record.getAudioUrl();
+        if (oldPath != null && oldPath.contains("/temp/")) {
+            String uuid = oldPath.replaceFirst(".*/", "").replaceFirst("\\.webm$", "");
+            String newPath = moveVoiceToFinal(uuid, userId, record.getRecordDate(), mealType);
+            record.setAudioUrl(newPath);
+        }
+
         voiceRecordRepository.save(record);
-        log.info("语音记录餐次已更新: id={}, mealType={}", id, mealType);
+        log.info("语音记录餐次已更新: id={}, mealType={}, audioUrl={}", id, mealType, record.getAudioUrl());
     }
 
     /** 删除语音记录 + 磁盘文件 */
     public void delete(Long id, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
-        // 验证所有权
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权删除此语音记录");
         }
@@ -145,26 +160,47 @@ public class VoiceRecordService {
         log.info("语音记录已删除: id={}", id);
     }
 
+    private String moveVoiceToFinal(String uuid, Long userId, LocalDate recordDate, String mealType) {
+        try {
+            Path tempFile = TEMP_DIR.resolve(uuid + ".webm");
+            if (!Files.exists(tempFile)) {
+                log.warn("临时音频文件不存在: {}", tempFile);
+                return "/voice/temp/" + uuid + ".webm";
+            }
+            String mealEn = MEAL_TYPE_EN.getOrDefault(mealType, "other");
+            String datePath = String.format("%d/%04d/%02d/%02d",
+                    userId, recordDate.getYear(), recordDate.getMonthValue(), recordDate.getDayOfMonth());
+            Path finalDir = UPLOAD_ROOT.resolve(datePath);
+            Files.createDirectories(finalDir);
+
+            String dateStr = String.format("%04d-%02d-%02d",
+                    recordDate.getYear(), recordDate.getMonthValue(), recordDate.getDayOfMonth());
+            String filename = dateStr + "-" + userId + "-" + mealEn + "-" + uuid + ".webm";
+            Path finalFile = finalDir.resolve(filename);
+
+            Files.move(tempFile, finalFile, StandardCopyOption.REPLACE_EXISTING);
+            String relativePath = "/voice/" + datePath + "/" + filename;
+            log.info("音频已移动到最终位置: {} -> {}", tempFile, finalFile);
+            return relativePath;
+        } catch (IOException e) {
+            log.error("移动音频文件失败: uuid={}", uuid, e);
+            return "/voice/temp/" + uuid + ".webm";
+        }
+    }
+
     /**
-     * 保存音频字节到磁盘，返回相对路径。
-     * 目录: uploads/voice/{userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{uuid}.webm
+     * 保存音频字节到临时目录，返回临时相对路径。
+     * 临时路径: /voice/temp/{uuid}.webm
+     * 后续 updateMealType 时移动到最终位置。
      */
     private String saveAudioToDisk(byte[] audioBytes, Long userId) throws IOException {
-        LocalDate today = LocalDate.now();
-        String datePath = String.format("%d/%04d/%02d/%02d",
-                userId, today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        Path dir = UPLOAD_ROOT.resolve(datePath);
-        Files.createDirectories(dir);
-
+        Files.createDirectories(TEMP_DIR);
         String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String dateStr = String.format("%04d-%02d-%02d",
-                today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        String filename = dateStr + "-" + userId + "-" + uuid + ".webm";
-        Path filePath = dir.resolve(filename);
-
+        String filename = uuid + ".webm";
+        Path filePath = TEMP_DIR.resolve(filename);
         Files.write(filePath, audioBytes);
-        String relativePath = "/voice/" + datePath + "/" + filename;
-        log.info("音频已保存到磁盘: {} ({} bytes)", relativePath, audioBytes.length);
+        String relativePath = "/voice/temp/" + filename;
+        log.info("音频已保存到临时目录: {} ({} bytes)", relativePath, audioBytes.length);
         return relativePath;
     }
 

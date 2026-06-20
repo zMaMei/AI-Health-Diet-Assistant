@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -21,8 +23,16 @@ public class MealPhotoService {
 
     private static final Logger log = LoggerFactory.getLogger(MealPhotoService.class);
 
-    /** 照片存储根目录（相对于 backend 运行目录） */
     private static final Path UPLOAD_ROOT = Paths.get("uploads", "diet-images");
+    private static final Path TEMP_DIR = UPLOAD_ROOT.resolve("temp");
+
+    private static final Map<String, String> MEAL_TYPE_EN = Map.of(
+        "早餐", "breakfast",
+        "午餐", "lunch",
+        "晚餐", "dinner",
+        "夜宵", "night",
+        "其他", "other"
+    );
 
     private final MealPhotoRepository mealPhotoRepository;
 
@@ -43,17 +53,28 @@ public class MealPhotoService {
                 .stream().map(this::toVO).toList();
     }
 
-    /** 新增照片记录（数据库记录已存在 imageUrl，只写 DB） */
+    /** 新增照片记录：从临时路径移到最终路径，然后写 DB */
     public Long create(MealPhotoCreateCommand command) {
+        LocalDate date = command.getRecordDate();
+        String mealType = command.getMealType();
+        Long userId = command.getUserId();
+        String tempPath = command.getImageUrl(); // /diet-images/temp/{uuid}.jpg
+
+        // 从临时路径提取 uuid
+        String uuid = tempPath.replaceFirst(".*/", "").replaceFirst("\\.jpg$", "");
+
+        // 移动到最终位置
+        String finalPath = moveToFinal(uuid, userId, date, mealType);
+
         MealPhoto photo = new MealPhoto();
-        photo.setUserId(command.getUserId());
-        photo.setRecordDate(command.getRecordDate());
-        photo.setMealType(command.getMealType());
-        photo.setImageUrl(command.getImageUrl());
+        photo.setUserId(userId);
+        photo.setRecordDate(date);
+        photo.setMealType(mealType);
+        photo.setImageUrl(finalPath);
 
         mealPhotoRepository.save(photo);
-        log.info("照片记录已保存: id={}, mealType={}, imageUrl={}",
-                photo.getId(), photo.getMealType(), photo.getImageUrl());
+        log.info("照片记录已保存: id={}, date={}, mealType={}, imageUrl={}",
+                photo.getId(), date, mealType, photo.getImageUrl());
         return photo.getId();
     }
 
@@ -64,12 +85,10 @@ public class MealPhotoService {
                     log.warn("照片记录不存在: id={}", id);
                     return new IllegalArgumentException("照片记录不存在");
                 });
-        // 验证所有权
         if (!photo.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权删除此照片");
         }
 
-        // 删除磁盘文件
         Path filePath = UPLOAD_ROOT.resolve(photo.getImageUrl().replaceFirst("^/diet-images/", ""));
         try {
             Files.deleteIfExists(filePath);
@@ -83,26 +102,52 @@ public class MealPhotoService {
     }
 
     /**
-     * 将上传的图片字节保存到磁盘，返回相对路径。
-     * 目录结构: uploads/diet-images/{userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{uuid}.jpg
+     * 将上传的图片保存到临时目录，返回临时相对路径。
+     * 后续 create() 时再按记录日期+餐次移动到最终位置。
+     * 临时路径: /diet-images/temp/{uuid}.jpg
      */
     public String saveImageToDisk(byte[] imageBytes, Long userId) throws IOException {
-        LocalDate today = LocalDate.now();
-        String datePath = String.format("%d/%04d/%02d/%02d",
-                userId, today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        Path dir = UPLOAD_ROOT.resolve(datePath);
-        Files.createDirectories(dir);
-
+        Files.createDirectories(TEMP_DIR);
         String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String dateStr = String.format("%04d-%02d-%02d",
-                today.getYear(), today.getMonthValue(), today.getDayOfMonth());
-        String filename = dateStr + "-" + userId + "-" + uuid + ".jpg";
-        Path filePath = dir.resolve(filename);
-
+        String filename = uuid + ".jpg";
+        Path filePath = TEMP_DIR.resolve(filename);
         Files.write(filePath, imageBytes);
-        String relativePath = "/diet-images/" + datePath + "/" + filename;
-        log.info("照片已保存到磁盘: {} ({} bytes)", relativePath, imageBytes.length);
+        String relativePath = "/diet-images/temp/" + filename;
+        log.info("照片已保存到临时目录: {} ({} bytes)", relativePath, imageBytes.length);
         return relativePath;
+    }
+
+    /**
+     * 将临时文件移动到最终位置。
+     * 最终路径: {userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{mealTypeEn}.jpg
+     */
+    private String moveToFinal(String uuid, Long userId, LocalDate recordDate, String mealType) {
+        try {
+            Path tempFile = TEMP_DIR.resolve(uuid + ".jpg");
+            if (!Files.exists(tempFile)) {
+                log.warn("临时文件不存在，跳过移动: {}", tempFile);
+                return "/diet-images/temp/" + uuid + ".jpg";
+            }
+
+            String mealEn = MEAL_TYPE_EN.getOrDefault(mealType, "other");
+            String datePath = String.format("%d/%04d/%02d/%02d",
+                    userId, recordDate.getYear(), recordDate.getMonthValue(), recordDate.getDayOfMonth());
+            Path finalDir = UPLOAD_ROOT.resolve(datePath);
+            Files.createDirectories(finalDir);
+
+            String dateStr = String.format("%04d-%02d-%02d",
+                    recordDate.getYear(), recordDate.getMonthValue(), recordDate.getDayOfMonth());
+            String filename = dateStr + "-" + userId + "-" + mealEn + "-" + uuid + ".jpg";
+            Path finalFile = finalDir.resolve(filename);
+
+            Files.move(tempFile, finalFile, StandardCopyOption.REPLACE_EXISTING);
+            String relativePath = "/diet-images/" + datePath + "/" + filename;
+            log.info("照片已移动到最终位置: {} -> {}", tempFile, finalFile);
+            return relativePath;
+        } catch (IOException e) {
+            log.error("移动照片文件失败: uuid={}", uuid, e);
+            return "/diet-images/temp/" + uuid + ".jpg";
+        }
     }
 
     private MealPhotoVO toVO(MealPhoto photo) {
