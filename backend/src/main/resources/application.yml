@@ -9,10 +9,6 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: hanekawa8
-  h2:
-    console:
-      enabled: false
-      path: /h2-console
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
