@@ -3,19 +3,32 @@ package com.health.diet.dto.vo;
 import java.math.BigDecimal;
 import java.util.List;
 
+/* 每日营养汇总返回 */
 public class NutritionDailyVO {
 
+    /* 热量总计 */
     private BigDecimal calorieTotal;
+    /* 蛋白质总计 */
     private BigDecimal proteinTotal;
+    /* 脂肪总计 */
     private BigDecimal fatTotal;
+    /* 碳水化合物总计 */
     private BigDecimal carbohydrateTotal;
+    /* 糖分总计 */
     private BigDecimal sugarTotal;
+    /* 钠总计 */
     private BigDecimal sodiumTotal;
+    /* 热量目标 */
     private BigDecimal calorieGoal;
+    /* 蛋白质目标 */
     private BigDecimal proteinGoal;
+    /* 脂肪目标 */
     private BigDecimal fatGoal;
+    /* 碳水化合物目标 */
     private BigDecimal carbohydrateGoal;
+    /* 趋势数据 */
     private List<NutritionTrendPoint> trend;
+    /* 建议 */
     private String suggestion;
 
     public BigDecimal getCalorieTotal() { return calorieTotal; }
@@ -44,7 +57,9 @@ public class NutritionDailyVO {
     public void setSuggestion(String suggestion) { this.suggestion = suggestion; }
 
     public static class NutritionTrendPoint {
+        /* 日期 */
         private String date;
+        /* 热量 */
         private BigDecimal calorie;
 
         public NutritionTrendPoint() {}

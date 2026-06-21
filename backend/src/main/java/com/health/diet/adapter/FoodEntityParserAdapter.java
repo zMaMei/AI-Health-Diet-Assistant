@@ -18,6 +18,7 @@ import java.util.Map;
  * 食物实体解析适配器 — 调用通义千问文本模型从自然语言中提取食物信息。
  * 对应设计文档 9 节 FoodEntityParserAdapter 类。
  */
+/* 食物实体解析适配器 */
 @Component
 public class FoodEntityParserAdapter {
 
@@ -68,6 +69,7 @@ public class FoodEntityParserAdapter {
             {"entities":[{"foodName":"米饭","amount":1,"unit":"碗","mealType":"午餐","calorie":116,"protein":2.6,"fat":0.3,"carbohydrate":25.9,"sugar":0.1,"sodium":2.0}]}
             """;
 
+        /* 构建食物实体解析请求 */
         // 使用多模态端点（纯文本内容格式），避免兼容模式 403
         Map<String, Object> body = Map.of(
             "model", config.getModel(),
@@ -80,6 +82,7 @@ public class FoodEntityParserAdapter {
         );
 
         try {
+            /* 调用AI提取食物实体 */
             String resp = restClient.post()
                     .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
@@ -89,9 +92,11 @@ public class FoodEntityParserAdapter {
                     .body(String.class);
 
             log.debug("食物实体提取响应: {}", resp);
+            /* 解析食物实体JSON */
             return parseEntities(resp);
 
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("千问实体提取失败", e);
             throw new RuntimeException("AI 食物解析服务暂时不可用，请重试", e);
         }
@@ -101,6 +106,7 @@ public class FoodEntityParserAdapter {
     private List<FoodEntity> parseEntities(String rawJson) throws Exception {
         Map<String, Object> root = objectMapper.readValue(rawJson, new TypeReference<>() {});
 
+        /* 兼容多种响应格式 */
         // 解析响应文本：先试多模态格式，再试 OpenAI 兼容格式
         String jsonText;
         try {

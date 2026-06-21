@@ -3,23 +3,29 @@ package com.health.diet.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ai_message")
+/* AI对话消息表 */
+@Entity /* JPA实体 */
+@Table(name = "ai_message") /* 数据库表名 */
 public class AiMessage {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 消息主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "conversation_id", nullable = false)
+    /* 会话ID */
+    @Column(name = "conversation_id", nullable = false) /* 数据库列 */
     private Long conversationId;
 
+    /* 角色（用户/AI） */
     @Column(nullable = false, length = 16)
     private String role;
 
+    /* 消息内容 */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    /* 创建时间 */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -5,24 +5,27 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConfigurationProperties(prefix = "ai.dashscope")
+/* 阿里云百炼AI配置 */
 public class DashScopeConfig {
 
-    /** 百炼 API Key */
+    /* AI API密钥 */
     private String apiKey;
 
-    /** 多模态模型（图片+文字+语音） */
+    /* 多模态模型名称 */
     private String model = "qwen-omni-turbo";
 
-    /** 纯文本模型（更便宜，用于文字解析） */
+    /* 纯文本模型名称 */
     private String textModel = "qwen-turbo-latest";
 
-    /** 多模态生成接口 */
+    /* 多模态API地址 */
     private String multimodalUrl = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
 
-    /** 文本生成接口（OpenAI 兼容模式，更便宜） */
+    /* 文本API地址 */
     private String textUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
+    /* 最大Token数 */
     private int maxTokens = 1000;
+    /* 请求超时时间 */
     private int timeout = 20000;
 
     public String getApiKey() { return apiKey; }

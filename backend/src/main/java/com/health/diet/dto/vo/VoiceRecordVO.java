@@ -3,16 +3,26 @@ package com.health.diet.dto.vo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/* 语音记录返回 */
 public class VoiceRecordVO {
 
+    /* 记录ID */
     private Long id;
+    /* 用户ID */
     private Long userId;
+    /* 记录日期 */
     private LocalDate recordDate;
+    /* 音频URL */
     private String audioUrl;
+    /* 转写文本 */
     private String transcribedText;
+    /* 食物实体JSON */
     private String foodEntities;
+    /* 时长(秒) */
     private Integer durationSeconds;
+    /* 餐次类型 */
     private String mealType;
+    /* 创建时间 */
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }

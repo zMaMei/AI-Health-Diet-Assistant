@@ -19,11 +19,15 @@ public class HealthScoreController {
         this.healthScoreService = healthScoreService;
     }
 
+    /* 查询每日健康评分 */
     @GetMapping("/daily")
     public ApiResponse<HealthScoreVO> getDailyScore(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 日期参数 */
+        /* 调用查询每日健康评分服务 */
         return ApiResponse.success(healthScoreService.getDailyScore(userId, date));
     }
 }

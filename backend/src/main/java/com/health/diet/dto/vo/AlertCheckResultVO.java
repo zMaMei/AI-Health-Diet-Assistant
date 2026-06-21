@@ -2,9 +2,12 @@ package com.health.diet.dto.vo;
 
 import java.util.List;
 
+/* 预警检查结果返回 */
 public class AlertCheckResultVO {
 
+    /* 是否有预警 */
     private boolean hasAlert;
+    /* 预警消息列表 */
     private List<AlertMessage> alerts;
 
     public boolean isHasAlert() { return hasAlert; }
@@ -13,8 +16,11 @@ public class AlertCheckResultVO {
     public void setAlerts(List<AlertMessage> alerts) { this.alerts = alerts; }
 
     public static class AlertMessage {
+        /* 营养素类型 */
         private String nutrientType;
+        /* 预警消息 */
         private String message;
+        /* 建议 */
         private String suggestion;
 
         public AlertMessage() {}

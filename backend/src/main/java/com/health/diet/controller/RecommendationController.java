@@ -16,15 +16,21 @@ public class RecommendationController {
         this.recommendationService = recommendationService;
     }
 
+    /* 获取今日推荐 */
     @GetMapping("/today")
     public ApiResponse<RecommendationPageVO> getToday(HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 调用获取今日推荐服务 */
         return ApiResponse.success(recommendationService.getTodayPage(userId));
     }
 
+    /* 强制刷新推荐 */
     @PostMapping("/refresh")
     public ApiResponse<RecommendationPageVO> refreshToday(HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 调用强制刷新推荐服务 */
         return ApiResponse.success(recommendationService.refreshTodayPage(userId));
     }
 }

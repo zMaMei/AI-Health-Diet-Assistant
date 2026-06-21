@@ -3,26 +3,33 @@ package com.health.diet.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "users")
+/* 用户基础信息表 */
+@Entity /* JPA实体 */
+@Table(name = "users") /* 数据库表名 */
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 用户ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(nullable = false, length = 32)
+    /* 用户昵称 */
+    @Column(nullable = false, length = 32) /* 数据库列 */
     private String nickname;
 
+    /* 用户名（唯一） */
     @Column(nullable = false, length = 32, unique = true)
     private String username;
 
+    /* BCrypt密码哈希 */
     @Column(name = "password_hash", nullable = false, length = 128)
     private String passwordHash;
 
+    /* 创建时间 */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /* 更新时间 */
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

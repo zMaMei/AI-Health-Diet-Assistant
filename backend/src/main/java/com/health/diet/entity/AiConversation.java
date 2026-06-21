@@ -4,20 +4,25 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ai_conversation")
+/* AI对话会话表 */
+@Entity /* JPA实体 */
+@Table(name = "ai_conversation") /* 数据库表名 */
 public class AiConversation {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 会话主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /* 关联用户ID */
+    @Column(name = "user_id", nullable = false) /* 数据库列 */
     private Long userId;
 
+    /* 记录日期 */
     @Column(name = "record_date", nullable = false)
     private LocalDate recordDate;
 
+    /* 创建时间 */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

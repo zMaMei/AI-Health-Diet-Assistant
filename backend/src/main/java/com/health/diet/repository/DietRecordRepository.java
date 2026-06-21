@@ -10,15 +10,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/* 饮食记录数据访问层 */
 public interface DietRecordRepository extends JpaRepository<DietRecord, Long> {
+
+    /* findByUserIdAndRecordTimeBetweenOrderByRecordTimeAsc 按用户和时间区间查询记录 */
     List<DietRecord> findByUserIdAndRecordTimeBetweenOrderByRecordTimeAsc(Long userId, LocalDateTime start, LocalDateTime end);
 
+    /* findByUserAndDate 按用户和日期查询记录（快捷方法） */
     default List<DietRecord> findByUserAndDate(Long userId, LocalDate date) {
         return findByUserIdAndRecordTimeBetweenOrderByRecordTimeAsc(
                 userId, date.atStartOfDay(), date.plusDays(1).atStartOfDay());
     }
 
-    /** 汇总某用户某日的营养合计 */
+    /* sumNutritionRaw 汇总某用户某日的营养合计（原始查询） */
     @Query("SELECT COALESCE(SUM(d.calorie),0), COALESCE(SUM(d.protein),0), " +
            "COALESCE(SUM(d.fat),0), COALESCE(SUM(d.carbohydrate),0), " +
            "COALESCE(SUM(d.sugar),0), COALESCE(SUM(d.sodium),0) " +
@@ -27,6 +31,7 @@ public interface DietRecordRepository extends JpaRepository<DietRecord, Long> {
                                    @Param("start") LocalDateTime start,
                                    @Param("end") LocalDateTime end);
 
+    /* sumNutrition 汇总某用户某日营养合计并返回数组（便捷方法） */
     default BigDecimal[] sumNutrition(Long userId, LocalDate date) {
         List<Object[]> rows = sumNutritionRaw(userId, date.atStartOfDay(), date.plusDays(1).atStartOfDay());
         if (rows.isEmpty() || rows.get(0) == null || rows.get(0).length == 0) {

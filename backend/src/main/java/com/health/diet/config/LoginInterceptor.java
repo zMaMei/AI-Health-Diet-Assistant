@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
+/* 登录认证拦截器 */
 public class LoginInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(LoginInterceptor.class);
@@ -42,8 +43,9 @@ public class LoginInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 提取 token
+        /* 从请求头提取Token */
         String authHeader = request.getHeader("Authorization");
+        /* Bearer Token解析 */
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("缺少 Authorization 头: {} {}", method, path);
             response.setStatus(401);
@@ -53,17 +55,19 @@ public class LoginInterceptor implements HandlerInterceptor {
         }
 
         String token = authHeader.substring(7);
+        /* Token验证 */
         Long userId = authService.getUserIdFromToken(token);
 
         if (userId == null) {
             log.warn("无效 token: {} {}", method, path);
+            /* 未登录返回401 */
             response.setStatus(401);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"code\":401,\"message\":\"登录已过期，请重新登录\"}");
             return false;
         }
 
-        // 注入 userId
+        /* 注入userId到请求属性 */
         request.setAttribute("userId", userId);
         return true;
     }

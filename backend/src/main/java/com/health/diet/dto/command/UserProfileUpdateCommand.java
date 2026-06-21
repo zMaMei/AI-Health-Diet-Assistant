@@ -2,15 +2,24 @@ package com.health.diet.dto.command;
 
 import java.math.BigDecimal;
 
+/* 更新用户档案请求 */
 public class UserProfileUpdateCommand {
 
+    /* 年龄 */
     private Integer age;
+    /* 身高（厘米） */
     private BigDecimal heightCm;
+    /* 体重（千克） */
     private BigDecimal weightKg;
+    /* 健康目标 */
     private String goal;
+    /* 饮食禁忌 */
     private String taboo;
+    /* 口味偏好 */
     private String tastePreference;
+    /* 预警档案 */
     private String warningProfile;
+    /* 性别 */
     private String gender;
 
     public Integer getAge() { return age; }

@@ -75,12 +75,14 @@ public class RecommendationService {
     /**
      * 今日推荐：有缓存返回缓存，无缓存 AI 生成。
      */
+    /* 事务保护 */
     @Transactional
     public List<RecommendationVO> recommendToday(Long userId) {
         LocalDate today = LocalDate.now();
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
 
+        /* 缓存推荐结果 */
         // 1. Check today's cache
         try {
             List<Recommendation> cached = recommendationRepository
@@ -107,12 +109,14 @@ public class RecommendationService {
     /**
      * 强制刷新：删除当天推荐，AI 重新生成。
      */
+    /* 事务保护 */
     @Transactional
     public List<RecommendationVO> refreshToday(Long userId) {
         LocalDate today = LocalDate.now();
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
 
+        /* 清除缓存 */
         try {
             recommendationRepository.deleteByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
             log.info("已清除今日推荐缓存: userId={}", userId);
@@ -129,6 +133,7 @@ public class RecommendationService {
         return generateFresh(userId);
     }
 
+    /* 事务保护 */
     @Transactional
     private List<RecommendationVO> generateAndSave(Long userId) {
         // 1. Load profile (required)
@@ -154,10 +159,12 @@ public class RecommendationService {
             return List.of();
         }
 
+        /* AI推荐优先 */
         // 5. Try AI generation, fallback to rules
         try {
             return generateByAI(userId, profile, thresholds, intake, allRecipes);
         } catch (Exception e) {
+            /* 规则引擎降级 */
             log.warn("AI 推荐失败，降级为规则引擎: {}", e.getMessage());
             try {
                 return generateByRules(userId, profile, allRecipes);
@@ -187,6 +194,7 @@ public class RecommendationService {
             ));
         }
 
+        /* 计算营养缺口 */
         // Calculate gaps
         String gaps = buildGapDescription(thresholds, intake);
 
@@ -263,6 +271,7 @@ public class RecommendationService {
     /**
      * AI 直接创造新菜谱（换一批用），不限菜谱库。
      */
+    /* 事务保护 */
     @Transactional
     private List<RecommendationVO> generateFresh(Long userId) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
@@ -343,6 +352,7 @@ public class RecommendationService {
                     continue;
                 }
 
+                /* 创建新菜谱 */
                 // 保存新菜谱
                 Recipe newRecipe = new Recipe();
                 newRecipe.setName(fr.name());
@@ -401,6 +411,7 @@ public class RecommendationService {
         // 取前 30% 或至少 15 道作为候选池，随机选 5 道
         int poolSize = Math.max(15, scored.size() * 30 / 100);
         poolSize = Math.min(poolSize, scored.size());
+        /* 随机选取增加多样性 */
         List<ScoredRecipe> pool = new ArrayList<>(scored.subList(0, poolSize));
         Collections.shuffle(pool);
         List<ScoredRecipe> top = pool.stream().limit(5).toList();
@@ -473,6 +484,7 @@ public class RecommendationService {
 
     // ── Rule-based scoring (fallback) ──────────────────────────────
 
+    /* 食谱评分 */
     private BigDecimal scoreRecipe(Recipe recipe, UserProfile profile) {
         BigDecimal score = new BigDecimal("50");
         if (profile == null) return score;
@@ -501,6 +513,7 @@ public class RecommendationService {
             }
         }
 
+        /* 过滤忌口菜谱 */
         if (profile.getTaboo() != null && recipe.getTags() != null) {
             for (String taboo : profile.getTaboo().split(",")) {
                 if (recipe.getTags().contains(taboo.trim()))
@@ -511,6 +524,7 @@ public class RecommendationService {
         return score.max(BigDecimal.ZERO).min(new BigDecimal("100"));
     }
 
+    /* 生成推荐理由 */
     private String generateReason(Recipe recipe, UserProfile profile) {
         List<String> reasons = new ArrayList<>();
         if (profile != null) {

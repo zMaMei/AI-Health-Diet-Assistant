@@ -2,8 +2,11 @@ package com.health.diet.dto.vo;
 
 import java.util.List;
 
+/* AI对话消息返回 */
 public class AiChatVO {
+    /* 会话ID */
     private Long conversationId;
+    /* 消息列表 */
     private List<MessageVO> messages;
 
     public Long getConversationId() { return conversationId; }
@@ -12,8 +15,11 @@ public class AiChatVO {
     public void setMessages(List<MessageVO> messages) { this.messages = messages; }
 
     public static class MessageVO {
+        /* 角色 */
         private String role;
+        /* 内容 */
         private String content;
+        /* 创建时间 */
         private String createdAt;
 
         public MessageVO() {}

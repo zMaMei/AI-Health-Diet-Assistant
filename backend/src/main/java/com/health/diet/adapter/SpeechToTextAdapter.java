@@ -18,6 +18,7 @@ import java.util.Map;
  * 语音转文字适配器 — 调用通义千问 qwen-omni-turbo 多模态模型的音频能力。
  * 对应设计文档 9 节 SpeechToTextAdapter 类。
  */
+/* 语音转文字适配器 */
 @Component
 public class SpeechToTextAdapter {
 
@@ -43,11 +44,13 @@ public class SpeechToTextAdapter {
      * @return 转写后的文本
      */
     public String transcribe(byte[] audioBytes, String contentType) {
+        /* 音频Base64编码 */
         String base64 = Base64.getEncoder().encodeToString(audioBytes);
         String mime = resolveAudioMime(contentType);
 
         log.info("调用千问多模态 API 转写语音, size={} bytes, mime={}", audioBytes.length, mime);
 
+        /* 构建语音识别请求 */
         Map<String, Object> body = Map.of(
             "model", config.getModel(),
             "input", Map.of("messages", List.of(
@@ -62,6 +65,7 @@ public class SpeechToTextAdapter {
         );
 
         try {
+            /* 调用DashScope多模态API进行语音转写 */
             String resp = restClient.post()
                     .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
@@ -71,9 +75,11 @@ public class SpeechToTextAdapter {
                     .body(String.class);
 
             log.debug("语音转写响应: {}", resp);
+            /* 解析转写文本结果 */
             return extractText(resp);
 
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("千问语音转写失败，降级为模拟数据", e);
             return "我中午吃了一碗米饭和一个鸡腿";
         }

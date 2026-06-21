@@ -23,27 +23,29 @@ public class VoiceParseController {
         this.voiceRecordService = voiceRecordService;
     }
 
-    /**
-     * POST /api/voice/parse
-     * 上传录音 → 保存文件到磁盘 → ASR → 食物实体解析 → 写 voice_record 表 → 返回结果
-     */
+    /* 语音解析上传 */
     @PostMapping("/parse")
     public ApiResponse<VoiceParseResultVO> parse(
             @RequestParam("audio") MultipartFile file,
             @RequestParam(defaultValue = "0") Integer durationSeconds,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
 
+        /* 参数校验 */
         if (file.isEmpty()) {
             return ApiResponse.error(400, "音频文件不能为空");
         }
 
+        /* 异常处理 */
         try {
             log.info("收到音频文件: name={}, size={}, type={}, duration={}s",
                     file.getOriginalFilename(), file.getSize(),
                     file.getContentType(), durationSeconds);
 
+            /* 读取音频字节数据 */
             byte[] audioBytes = file.getBytes();
+            /* 调用语音解析服务 */
             VoiceParseResultVO result = voiceRecordService.parseVoice(
                     userId, audioBytes, file.getContentType(), durationSeconds);
 

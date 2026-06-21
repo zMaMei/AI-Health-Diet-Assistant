@@ -5,34 +5,49 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/* 新增饮食记录请求 */
 public class DietRecordCreateCommand {
 
+    /* 用户ID */
     private Long userId;
 
+    /* 食物ID */
     private Long foodId;
 
+    /* 食物名称 */
     @NotBlank
     private String foodName;
 
+    /* 餐次类型 */
     @NotBlank
     private String mealType;
 
+    /* 食用分量 */
     @NotNull
     private BigDecimal amount;
 
+    /* 记录来源 */
     @NotBlank
     private String source;
 
+    /* 食物图片URL */
     private String imageUrl;
 
+    /* 记录时间 */
     private LocalDateTime recordTime;
 
     // AI 识别/分析返回的营养值（可选，后端兜底从 food_item 计算）
+    /* 热量（千卡） */
     private BigDecimal calorie;
+    /* 蛋白质（克） */
     private BigDecimal protein;
+    /* 脂肪（克） */
     private BigDecimal fat;
+    /* 碳水化合物（克） */
     private BigDecimal carbohydrate;
+    /* 糖分（克） */
     private BigDecimal sugar;
+    /* 钠（毫克） */
     private BigDecimal sodium;
 
     public Long getUserId() { return userId; }

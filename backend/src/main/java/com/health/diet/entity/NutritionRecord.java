@@ -4,40 +4,51 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Entity
+/* 每日营养汇总表 */
+@Entity /* JPA实体 */
 @Table(name = "nutrition_record", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_id", "record_date"})
-})
+}) /* 数据库表名 */
 public class NutritionRecord {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 汇总主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /* 关联用户ID */
+    @Column(name = "user_id", nullable = false) /* 数据库列 */
     private Long userId;
 
+    /* 记录日期 */
     @Column(name = "record_date", nullable = false)
     private LocalDate recordDate;
 
+    /* 总热量 */
     @Column(name = "calorie_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal calorieTotal = BigDecimal.ZERO;
 
+    /* 总蛋白质 */
     @Column(name = "protein_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal proteinTotal = BigDecimal.ZERO;
 
+    /* 总脂肪 */
     @Column(name = "fat_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal fatTotal = BigDecimal.ZERO;
 
+    /* 总碳水 */
     @Column(name = "carbohydrate_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal carbohydrateTotal = BigDecimal.ZERO;
 
+    /* 总糖 */
     @Column(name = "sugar_total", precision = 10, scale = 2)
     private BigDecimal sugarTotal = BigDecimal.ZERO;
 
+    /* 总钠 */
     @Column(name = "sodium_total", precision = 10, scale = 2)
     private BigDecimal sodiumTotal = BigDecimal.ZERO;
 
+    /* 评分 */
     @Column(precision = 5, scale = 2)
     private BigDecimal score;
 

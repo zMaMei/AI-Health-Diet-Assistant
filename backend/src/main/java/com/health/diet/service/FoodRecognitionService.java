@@ -42,6 +42,7 @@ public class FoodRecognitionService {
      * @return recognition result with candidates and nutrition preview
      */
     public FoodRecognizeResultVO recognizeImage(byte[] imageBytes, String contentType) {
+        /* AI识别食物 */
         // Call AI adapter to analyze the image
         List<FoodLabel> labels;
         try {
@@ -58,6 +59,7 @@ public class FoodRecognitionService {
         result.setImageUrl("analyzed-image");
         result.setCandidates(new ArrayList<>());
 
+        /* 解析AI返回结果 */
         for (FoodLabel label : labels) {
             FoodCandidate candidate = new FoodCandidate();
             candidate.setFoodName(label.label());
@@ -73,6 +75,7 @@ public class FoodRecognitionService {
                     nvl(label.sodium())
             ));
 
+            /* 匹配本地食物库补全信息 */
             // ② food_item 库仅用于补全 unit 和 category，不覆盖营养值
             FoodItem food = foodItemRepository.findByName(label.label()).orElse(null);
             if (food != null) {
@@ -98,7 +101,9 @@ public class FoodRecognitionService {
      * @param foodName the food name to analyze
      * @return nutrition preview, or null if analysis fails
      */
+    /* 文本分析食物营养 */
     public NutritionPreview analyzeFoodName(String foodName) {
+        /* 调用AI接口 */
         // AI 营养分析优先
         log.info("Requesting AI nutrition analysis for: {}", foodName);
         try {
@@ -134,6 +139,7 @@ public class FoodRecognitionService {
         return null;
     }
 
+    /* 图片保存 */
     /**
      * 保存上传的图片到磁盘，返回相对路径。
      */

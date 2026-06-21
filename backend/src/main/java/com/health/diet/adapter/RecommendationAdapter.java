@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
  * AI 推荐适配器 — 调用 DashScope 多模态模型根据用户营养缺口 + 菜谱库生成个性化推荐。
  * 使用 multimodalUrl（与 ThresholdAnalysisAdapter 一致，已验证可用）。
  */
+/* 食谱推荐适配器 */
 @Component
 public class RecommendationAdapter {
 
@@ -42,9 +43,11 @@ public class RecommendationAdapter {
      * @param prompt 包含用户画像 + 营养缺口 + 菜谱库摘要的完整 prompt
      * @return AI 推荐的菜谱列表
      */
+    /* 从菜谱库选择最佳菜谱 */
     public RecommendationResult analyze(String prompt) {
         log.info("调用 DashScope 多模态模型进行智能推荐");
 
+        /* 构建推荐分析提示词 */
         // 使用 multimodal 端点格式（与 ThresholdAnalysisAdapter 一致）
         Map<String, Object> body = Map.of(
             "model", config.getModel(),
@@ -57,6 +60,7 @@ public class RecommendationAdapter {
         );
 
         try {
+            /* 调用AI推荐 */
             String resp = restClient.post()
                     .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
@@ -66,8 +70,10 @@ public class RecommendationAdapter {
                     .body(String.class);
 
             log.debug("AI 推荐原始响应: {}", resp);
+            /* 解析推荐结果 */
             return parseResult(resp);
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("AI 推荐分析失败", e);
             throw new RuntimeException("AI 推荐服务暂时不可用，请稍后重试", e);
         }
@@ -177,9 +183,11 @@ public class RecommendationAdapter {
     /**
      * 调用 AI 直接创造新菜谱（换一批用）。
      */
+    /* AI创造新菜谱 */
     public FreshResult analyzeFresh(String prompt) {
         log.info("调用 AI 创造新菜谱");
 
+        /* 构建创造菜谱提示词 */
         Map<String, Object> body = Map.of(
             "model", config.getModel(),
             "input", Map.of("messages", List.of(
@@ -191,6 +199,7 @@ public class RecommendationAdapter {
         );
 
         try {
+            /* 调用AI创造菜谱 */
             String resp = restClient.post()
                     .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
@@ -200,8 +209,10 @@ public class RecommendationAdapter {
                     .body(String.class);
 
             log.debug("AI 创造菜谱原始响应: {}", resp);
+            /* 解析创造菜谱结果 */
             return parseFreshResult(resp);
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("AI 创造菜谱失败", e);
             throw new RuntimeException("AI 推荐服务暂时不可用，请稍后重试", e);
         }

@@ -12,11 +12,13 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
+/* 全局异常处理 */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /* 处理通用异常 */
     /** 业务参数异常 */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -25,6 +27,7 @@ public class GlobalExceptionHandler {
         return ApiResponse.error(400, e.getMessage());
     }
 
+    /* 处理参数校验异常 */
     /** @Valid 校验失败（中文提示） */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -52,6 +55,7 @@ public class GlobalExceptionHandler {
         return ApiResponse.error(400, "文件大小超出限制（最大10MB）");
     }
 
+    /* 兜底异常处理 */
     /** 其他未预期异常 */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

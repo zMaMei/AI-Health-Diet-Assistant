@@ -1,11 +1,17 @@
 package com.health.diet.dto.vo;
 
+/* 登录/注册返回结果 */
 public class LoginResultVO {
 
+    /* 用户ID */
     private Long userId;
+    /* 用户名 */
     private String username;
+    /* 昵称 */
     private String nickname;
+    /* 头像URL */
     private String avatarUrl;
+    /* Token */
     private String token;
 
     public Long getUserId() { return userId; }

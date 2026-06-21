@@ -31,6 +31,7 @@ public class DietRecordService {
         this.foodItemRepository = foodItemRepository;
     }
 
+    /* 新增饮食记录 */
     public Long create(DietRecordCreateCommand command) {
         log.info("创建饮食记录: userId={}, foodName={}, mealType={}, amount={}, source={}",
                 command.getUserId(), command.getFoodName(), command.getMealType(),
@@ -64,6 +65,7 @@ public class DietRecordService {
 
     /** 写入营养快照：优先 AI 返回值，兜底查 food_item 计算 */
     private void populateNutrition(DietRecord record, DietRecordCreateCommand command) {
+        /* AI营养值优先 */
         // 优先使用 command 中传入的营养值（AI 返回）
         if (command.getCalorie() != null) {
             record.setCalorie(command.getCalorie());
@@ -75,9 +77,11 @@ public class DietRecordService {
             return;
         }
 
+        /* food_item兜底计算 */
         // 兜底：从 food_item 库按份量比例计算
         if (record.getFoodId() != null) {
             foodItemRepository.findById(record.getFoodId()).ifPresentOrElse(food -> {
+                /* 按份量换算营养 */
                 BigDecimal ratio = record.getAmount()
                         .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
                 record.setCalorie(food.getCalorie().multiply(ratio).setScale(2, RoundingMode.HALF_UP));
@@ -108,6 +112,7 @@ public class DietRecordService {
         record.setSodium(BigDecimal.ZERO);
     }
 
+    /* 查询饮食记录 */
     public List<DietRecordVO> list(Long userId, LocalDate date) {
         log.debug("查询饮食记录: userId={}, date={}", userId, date);
         List<DietRecord> records = dietRecordRepository.findByUserAndDate(userId, date);
@@ -115,6 +120,7 @@ public class DietRecordService {
         return records.stream().map(this::toVO).toList();
     }
 
+    /* 修改饮食记录 */
     public void update(Long id, DietRecordUpdateCommand command, Long userId) {
         log.info("更新饮食记录: id={}", id);
         DietRecord record = dietRecordRepository.findById(id)
@@ -122,6 +128,7 @@ public class DietRecordService {
                     log.warn("饮食记录不存在: id={}", id);
                     return new IllegalArgumentException("饮食记录不存在");
                 });
+        /* 所有权校验 */
         // 验证所有权
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权修改此记录");
@@ -142,12 +149,14 @@ public class DietRecordService {
         log.info("饮食记录已更新: id={}", id);
     }
 
+    /* 删除饮食记录 */
     public void delete(Long id, Long userId) {
         DietRecord record = dietRecordRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("尝试删除不存在的饮食记录: id={}", id);
                     return new IllegalArgumentException("饮食记录不存在");
                 });
+        /* 所有权校验 */
         // 验证所有权
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权删除此记录");

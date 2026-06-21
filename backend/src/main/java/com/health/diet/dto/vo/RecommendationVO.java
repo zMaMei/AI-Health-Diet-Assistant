@@ -2,21 +2,36 @@ package com.health.diet.dto.vo;
 
 import java.math.BigDecimal;
 
+/* 推荐菜谱返回 */
 public class RecommendationVO {
 
+    /* 推荐ID */
     private Long id;
+    /* 菜谱ID */
     private Long recipeId;
+    /* 菜谱名称 */
     private String recipeName;
+    /* 食材 */
     private String ingredients;
+    /* 步骤 */
     private String steps;
+    /* 标签 */
     private String tags;
+    /* 热量 */
     private BigDecimal calorie;
+    /* 蛋白质 */
     private BigDecimal protein;
+    /* 脂肪 */
     private BigDecimal fat;
+    /* 碳水化合物 */
     private BigDecimal carbohydrate;
+    /* 糖分 */
     private BigDecimal sugar;
+    /* 钠 */
     private BigDecimal sodium;
+    /* 推荐理由 */
     private String reason;
+    /* 匹配分数 */
     private BigDecimal matchScore;
 
     public Long getId() { return id; }

@@ -19,6 +19,7 @@ import java.util.Map;
  * 图像识别适配器 — 调用通义千问 qwen-omni-turbo 多模态模型识别食物图片。
  * 对应设计文档 9 节 ImageRecognitionAdapter 类。
  */
+/* 图片识别适配器 */
 @Component
 public class ImageRecognitionAdapter {
 
@@ -44,11 +45,14 @@ public class ImageRecognitionAdapter {
      * @return 识别到的食物标签列表（含营养估算）
      */
     public List<FoodLabel> detectFood(byte[] imageBytes, String contentType) {
+        /* 图片Base64编码 */
         String base64 = Base64.getEncoder().encodeToString(imageBytes);
         String mime = resolveMime(contentType);
 
         log.info("调用千问多模态 API 识别食物图片, size={} bytes, mime={}", imageBytes.length, mime);
 
+        /* 构建营养估算提示词 */
+        /* 复合菜品不拆分（Prompt约束） */
         String systemPrompt = """
             你是一个专业的营养分析AI助手。请仔细观察图片中的食物，对每一种识别到的食物：
             1. 给出食物中文名称
@@ -62,14 +66,18 @@ public class ImageRecognitionAdapter {
             {"foods":[{"name":"食物名","confidence":0.95,"calorie":120,"protein":2.5,"fat":0.3,"carbohydrate":26.0,"sugar":0.1,"sodium":2.0}]}
             """;
 
+        /* 构建图片识别请求 */
         Map<String, Object> body = buildMultimodalBody(systemPrompt,
                 "请识别图片中所有的食物（每道菜作为一个整体）并估算营养成分。",
                 "image", "data:" + mime + ";base64," + base64);
 
         try {
+            /* 调用DashScope多模态API */
             String resp = callApi(body);
+            /* 解析AI返回的食物列表 */
             return parseFoodLabels(resp);
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("千问图片识别失败", e);
             throw new RuntimeException("AI 图片识别服务暂时不可用，请重试", e);
         }
@@ -78,9 +86,11 @@ public class ImageRecognitionAdapter {
     /**
      * 根据食物名称分析营养成分（用于手动添加的"智能分析"）。
      */
+    /* 食物名称文本分析 */
     public FoodLabel analyzeFoodByName(String foodName) {
         log.info("调用千问文本 API 分析食物营养: {}", foodName);
 
+        /* 构建文本分析提示词 */
         String systemPrompt = """
             你是一个专业的营养分析AI助手。请根据食物名称估算营养成分。
             严格按以下JSON格式返回，不要包含其他文字：

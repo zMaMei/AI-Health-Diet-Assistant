@@ -3,9 +3,12 @@ package com.health.diet.dto.vo;
 import java.math.BigDecimal;
 import java.util.List;
 
+/* 食物识别结果返回 */
 public class FoodRecognizeResultVO {
 
+    /* 候选食物列表 */
     private List<FoodCandidate> candidates;
+    /* 图片URL */
     private String imageUrl;
 
     public List<FoodCandidate> getCandidates() { return candidates; }
@@ -14,11 +17,17 @@ public class FoodRecognizeResultVO {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public static class FoodCandidate {
+        /* 食物名称 */
         private String foodName;
+        /* 置信度 */
         private double confidence;
+        /* 单位 */
         private String unit;
+        /* 默认分量 */
         private double defaultAmount;
+        /* 营养预览 */
         private NutritionPreview nutritionPreview;
+        /* 分类 */
         private String category;
 
         public FoodCandidate() {}
@@ -43,16 +52,19 @@ public class FoodRecognizeResultVO {
         public void setCategory(String category) { this.category = category; }
     }
 
-    /**
-     * Per-serving nutrition estimate from AI analysis.
-     * Values reflect the nutrition for the default serving size.
-     */
+    /* 单份营养估算 */
     public static class NutritionPreview {
+        /* 热量 */
         private BigDecimal calorie;
+        /* 蛋白质 */
         private BigDecimal protein;
+        /* 脂肪 */
         private BigDecimal fat;
+        /* 碳水化合物 */
         private BigDecimal carbohydrate;
+        /* 糖分 */
         private BigDecimal sugar;
+        /* 钠 */
         private BigDecimal sodium;
 
         public NutritionPreview() {}

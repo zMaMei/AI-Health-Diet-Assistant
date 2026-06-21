@@ -2,12 +2,18 @@ package com.health.diet.dto.command;
 
 import java.math.BigDecimal;
 
+/* 修改饮食记录请求 */
 public class DietRecordUpdateCommand {
 
+    /* 食物ID */
     private Long foodId;
+    /* 食物名称 */
     private String foodName;
+    /* 餐次类型 */
     private String mealType;
+    /* 食用分量 */
     private BigDecimal amount;
+    /* 食物图片URL */
     private String imageUrl;
 
     public Long getFoodId() { return foodId; }

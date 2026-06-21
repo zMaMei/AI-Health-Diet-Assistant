@@ -25,33 +25,33 @@ public class FoodRecognitionController {
         this.foodRecognitionService = foodRecognitionService;
     }
 
-    /**
-     * POST /api/food/recognize
-     * Upload an image, save it to disk, and get AI-recognized food candidates.
-     * Returns imageUrl so the frontend can later associate the photo with the meal.
-     */
+    /* 拍照识别食物 */
     @PostMapping("/recognize")
     public ApiResponse<FoodRecognizeResultVO> recognize(@RequestParam("image") MultipartFile file,
                                                          HttpServletRequest request) {
+        /* 参数校验 */
         if (file.isEmpty()) {
             return ApiResponse.error(400, "图片文件不能为空");
         }
 
+        /* 异常处理 */
         try {
             log.info("Received image for recognition: name={}, size={}, type={}",
                     file.getOriginalFilename(), file.getSize(), file.getContentType());
 
+            /* 从拦截器注入的用户ID */
             Long userId = (Long) request.getAttribute("userId");
+            /* 读取图片字节数据 */
             byte[] imageBytes = file.getBytes();
 
-            // ① 先保存照片到磁盘
+            /* 存储文件 -- 先保存照片到磁盘 */
             String imageUrl = foodRecognitionService.saveImage(imageBytes, userId);
 
-            // ② AI 识别
+            /* 调用AI识别服务 -- AI 识别食物 */
             FoodRecognizeResultVO result = foodRecognitionService.recognizeImage(
                     imageBytes, file.getContentType());
 
-            // ③ 把 imageUrl 带回前端
+            /* 把 imageUrl 带回前端 */
             result.setImageUrl(imageUrl);
 
             return ApiResponse.success(result);
@@ -65,20 +65,19 @@ public class FoodRecognitionController {
         }
     }
 
-    /**
-     * POST /api/food/analyze-text
-     * Analyze a food name to get estimated nutrition data.
-     * Used by the manual add "智能分析" feature.
-     */
+    /* 文本分析食物 */
     @PostMapping("/analyze-text")
     public ApiResponse<NutritionPreview> analyzeText(@RequestBody Map<String, String> request) {
         String foodName = request.get("foodName");
+        /* 参数校验 */
         if (foodName == null || foodName.isBlank()) {
             return ApiResponse.error(400, "食物名称不能为空");
         }
 
+        /* 异常处理 */
         try {
             log.info("Analyzing food text: {}", foodName);
+            /* 调用AI文本分析服务 */
             NutritionPreview result = foodRecognitionService.analyzeFoodName(foodName.trim());
 
             if (result == null) {

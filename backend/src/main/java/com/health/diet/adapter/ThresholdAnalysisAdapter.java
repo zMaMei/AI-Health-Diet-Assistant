@@ -17,6 +17,7 @@ import java.util.Map;
 /**
  * 预警阈值分析适配器 — 调用通义千问 API 根据用户档案推荐个性化摄入上限。
  */
+/* 阈值分析适配器 */
 @Component
 public class ThresholdAnalysisAdapter {
 
@@ -37,9 +38,11 @@ public class ThresholdAnalysisAdapter {
     /**
      * 根据用户档案 prompt 调用 AI 分析，返回推荐阈值。
      */
+    /* 构建用户档案上下文 */
     public ThresholdResult analyze(String prompt) {
         log.info("调用千问 API 分析预警阈值");
 
+        /* 计算BMI */
         Map<String, Object> body = Map.of(
             "model", config.getModel(),
             "input", Map.of("messages", List.of(
@@ -51,6 +54,7 @@ public class ThresholdAnalysisAdapter {
         );
 
         try {
+            /* 调用AI生成个性化阈值 */
             String resp = restClient.post()
                     .uri(config.getMultimodalUrl())
                     .header("Authorization", "Bearer " + config.getApiKey())
@@ -60,8 +64,10 @@ public class ThresholdAnalysisAdapter {
                     .body(String.class);
 
             log.debug("AI 原始响应: {}", resp);
+            /* 解析阈值结果 */
             return parseResult(resp);
         } catch (Exception e) {
+            /* 降级处理 */
             log.error("AI 预警阈值分析失败", e);
             throw new RuntimeException("AI 分析服务暂时不可用，请稍后重试", e);
         }

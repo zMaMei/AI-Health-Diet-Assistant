@@ -25,36 +25,43 @@ public class VoiceRecordController {
         this.voiceRecordService = voiceRecordService;
     }
 
-    /** 查询某日所有语音记录 */
+    /* 查询语音记录 */
     @GetMapping
     public ApiResponse<List<VoiceRecordVO>> list(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 日期参数 */
+        /* 调用查询语音记录服务 */
         List<VoiceRecordVO> result = voiceRecordService.listByDate(userId, date);
         log.debug("GET /api/voice-records — userId={}, date={}, count={}",
                 userId, date, result.size());
         return ApiResponse.success(result);
     }
 
-    /** 更新语音记录的餐次类型（用户确认保存后回填） */
+    /* 回填语音记录餐次 */
     @PutMapping("/{id}/meal-type")
     public ApiResponse<Void> updateMealType(@PathVariable Long id,
                                              @RequestBody Map<String, String> body,
                                              HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
         String mealType = body.get("mealType");
         log.info("PUT /api/voice-records/{}/meal-type — mealType={}", id, mealType);
+        /* 权限校验  -- 调用更新语音记录餐次服务 */
         voiceRecordService.updateMealType(id, mealType, userId);
         return ApiResponse.success();
     }
 
-    /** 删除语音记录 + 磁盘文件 */
+    /* 删除语音记录 */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id,
                                      HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/voice-records/{} — 删除语音记录", id);
+        /* 权限校验  -- 调用删除语音记录服务 */
         voiceRecordService.delete(id, userId);
         return ApiResponse.success();
     }

@@ -24,22 +24,29 @@ public class AiAnalysisController {
         this.aiAnalysisService = aiAnalysisService;
     }
 
+    /* AI饮食对话 */
     @PostMapping("/analyze-diet")
     public ApiResponse<AiChatVO> analyzeDiet(@RequestBody AiChatCommand command,
                                               HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
         log.info("POST /api/ai/analyze-diet — userId={}, date={}, message={}",
                 userId, command.getDate(), command.getMessage());
+        /* 调用AI饮食对话服务 */
         AiChatVO result = aiAnalysisService.chat(userId, command);
         return ApiResponse.success(result);
     }
 
+    /* 查询AI对话历史 */
     @GetMapping("/conversation")
     public ApiResponse<AiChatVO> getConversation(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 日期参数 */
         log.debug("GET /api/ai/conversation — 获取对话: userId={}, date={}", userId, date);
+        /* 调用查询AI对话历史服务 */
         AiChatVO result = aiAnalysisService.getConversation(userId, date);
         return ApiResponse.success(result);
     }

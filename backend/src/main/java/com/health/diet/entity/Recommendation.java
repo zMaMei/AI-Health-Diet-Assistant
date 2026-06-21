@@ -4,26 +4,33 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "recommendation")
+/* 推荐记录表 */
+@Entity /* JPA实体 */
+@Table(name = "recommendation") /* 数据库表名 */
 public class Recommendation {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 推荐主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /* 关联用户ID */
+    @Column(name = "user_id", nullable = false) /* 数据库列 */
     private Long userId;
 
+    /* 菜谱ID */
     @Column(name = "recipe_id", nullable = false)
     private Long recipeId;
 
+    /* 推荐理由 */
     @Column(nullable = false, length = 255)
     private String reason;
 
+    /* 推荐评分 */
     @Column(nullable = false, precision = 6, scale = 2)
     private BigDecimal score;
 
+    /* 创建时间 */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

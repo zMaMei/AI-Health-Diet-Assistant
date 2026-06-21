@@ -20,6 +20,7 @@ public class UserProfileService {
         this.userProfileRepository = userProfileRepository;
     }
 
+    /* 查询用户档案 */
     public UserProfileVO getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
@@ -45,6 +46,7 @@ public class UserProfileService {
         return vo;
     }
 
+    /* 更新用户档案 */
     public void updateProfile(Long userId, UserProfileUpdateCommand command) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {

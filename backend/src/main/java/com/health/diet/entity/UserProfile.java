@@ -3,40 +3,52 @@ package com.health.diet.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "user_profile")
+/* 用户健康档案表 */
+@Entity /* JPA实体 */
+@Table(name = "user_profile") /* 数据库表名 */
 public class UserProfile {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 档案主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    /* 关联用户ID */
+    @Column(name = "user_id", nullable = false, unique = true) /* 数据库列 */
     private Long userId;
 
+    /* 年龄 */
     private Integer age;
 
+    /* 身高 */
     @Column(name = "height_cm", precision = 5, scale = 2)
     private BigDecimal heightCm;
 
+    /* 体重 */
     @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
+    /* 健康目标 */
     @Column(nullable = false, length = 32)
     private String goal;
 
+    /* 忌口 */
     @Column(length = 255)
     private String taboo;
 
+    /* 口味偏好 */
     @Column(name = "taste_preference", length = 255)
     private String tastePreference;
 
+    /* 预警档案 */
     @Column(name = "warning_profile", length = 255)
     private String warningProfile;
 
+    /* 性别 */
     @Column(length = 8)
     private String gender;
 
+    /* 头像URL */
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
 

@@ -62,6 +62,7 @@ public class AlertService {
         this.userProfileRepository = userProfileRepository;
     }
 
+    /* 创建预警规则 */
     public Long createRule(AlertRuleCreateCommand command) {
         AlertRule rule = new AlertRule();
         rule.setUserId(command.getUserId());
@@ -72,9 +73,11 @@ public class AlertService {
         return rule.getId();
     }
 
+    /* 修改预警规则 */
     public void updateRule(Long ruleId, AlertRuleUpdateCommand command, Long userId) {
         AlertRule rule = alertRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new IllegalArgumentException("预警规则不存在"));
+        /* 所有权校验 */
         // 验证所有权
         if (!rule.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权修改此规则");
@@ -84,11 +87,13 @@ public class AlertService {
         alertRuleRepository.save(rule);
     }
 
+    /* 查询预警规则 */
     public List<AlertRuleVO> listRules(Long userId) {
         return alertRuleRepository.findByUserId(userId).stream()
                 .map(this::toVO).toList();
     }
 
+    /* 检测超标 */
     public AlertCheckResultVO checkAfterRecordSaved(Long userId, LocalDate recordDate) {
         List<AlertRule> rules = alertRuleRepository.findByUserId(userId);
 
@@ -130,6 +135,7 @@ public class AlertService {
                 default -> null;
             };
 
+            /* 生成预警消息 */
             if (current != null && current.compareTo(rule.getThreshold()) > 0) {
                 result.setHasAlert(true);
                 String nutrientName = NUTRIENT_NAMES.getOrDefault(rule.getNutrientType(), rule.getNutrientType());
@@ -162,6 +168,7 @@ public class AlertService {
      * @param userId 用户 ID
      * @return 更新后的规则列表
      */
+    /* AI阈值分析 */
     public List<AlertRuleVO> analyzeAndApply(Long userId) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("请先完善个人资料"));

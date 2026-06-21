@@ -4,26 +4,33 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "meal_photo")
+/* 餐次照片表 */
+@Entity /* JPA实体 */
+@Table(name = "meal_photo") /* 数据库表名 */
 public class MealPhoto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 照片主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /* 关联用户ID */
+    @Column(name = "user_id", nullable = false) /* 数据库列 */
     private Long userId;
 
+    /* 记录日期 */
     @Column(name = "record_date", nullable = false)
     private LocalDate recordDate;
 
+    /* 餐次类型 */
     @Column(name = "meal_type", nullable = false, length = 16)
     private String mealType;
 
+    /* 照片URL */
     @Column(name = "image_url", nullable = false, length = 255)
     private String imageUrl;
 
+    /* 创建时间 */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

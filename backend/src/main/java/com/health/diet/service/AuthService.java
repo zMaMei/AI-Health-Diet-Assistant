@@ -52,6 +52,7 @@ public class AuthService {
         this.alertRuleRepository = alertRuleRepository;
     }
 
+    /* 用户注册 */
     // ==================== 注册 ====================
 
     public LoginResultVO register(RegisterCommand command) {
@@ -70,16 +71,19 @@ public class AuthService {
         }
 
         // 创建用户
+        /* 密码BCrypt加密 */
         String hash = passwordEncoder.encode(password);
         User user = new User(username, hash, username); // 默认昵称=用户名
         userRepository.save(user);
 
+        /* 默认用户档案初始化 */
         // 创建默认档案
         UserProfile profile = new UserProfile(user.getId(), "均衡");
         userProfileRepository.save(profile);
 
         log.info("新用户注册: id={}, username={}", user.getId(), username);
 
+        /* 默认预警规则初始化 */
         // 创建默认预警规则
         AlertRule calorieRule = new AlertRule();
         calorieRule.setUserId(user.getId());
@@ -105,6 +109,7 @@ public class AuthService {
         return buildLoginResult(user, null);
     }
 
+    /* 用户登录 */
     // ==================== 登录 ====================
 
     public LoginResultVO login(LoginCommand command) {
@@ -137,6 +142,7 @@ public class AuthService {
         return true;
     }
 
+    /* 用户登出 */
     // ==================== 登出 ====================
 
     public void logout(String token) {
@@ -146,6 +152,7 @@ public class AuthService {
         }
     }
 
+    /* Token验证 */
     // ==================== Token 验证 ====================
 
     public Long getUserIdFromToken(String token) {
@@ -153,6 +160,7 @@ public class AuthService {
         return tokenStore.get(token);
     }
 
+    /* 头像存储 */
     // ==================== 头像上传 ====================
 
     public String uploadAvatar(Long userId, MultipartFile file) throws IOException {
@@ -189,6 +197,7 @@ public class AuthService {
             }
         }
 
+        /* 头像文件命名 */
         String filename = UUID.randomUUID().toString().replace("-", "") + ext;
         Path target = userDir.resolve(filename);
         // 使用 Files.copy 而非 file.transferTo，避免 Tomcat ApplicationPart.write 路径解析不一致
@@ -209,6 +218,7 @@ public class AuthService {
         return avatarUrl;
     }
 
+    /* Token生成与管理 */
     // ==================== 内部方法 ====================
 
     private LoginResultVO buildLoginResult(User user, UserProfile profile) {

@@ -3,41 +3,53 @@ package com.health.diet.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "recipe")
+/* 食谱库表 */
+@Entity /* JPA实体 */
+@Table(name = "recipe") /* 数据库表名 */
 public class Recipe {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /* 食谱主键ID */
+    @Id /* 主键 */
+    @GeneratedValue(strategy = GenerationType.IDENTITY) /* 自增主键 */
     private Long id;
 
-    @Column(nullable = false, length = 64, unique = true)
+    /* 菜谱名称 */
+    @Column(nullable = false, length = 64, unique = true) /* 数据库列 */
     private String name;
 
+    /* 食材列表 */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String ingredients;
 
+    /* 做法步骤 */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String steps;
 
+    /* 标签 */
     @Column(length = 255)
     private String tags;
 
+    /* 热量 */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal calorie = BigDecimal.ZERO;
 
+    /* 蛋白质 */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal protein = BigDecimal.ZERO;
 
+    /* 脂肪 */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal fat = BigDecimal.ZERO;
 
+    /* 碳水 */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal carbohydrate = BigDecimal.ZERO;
 
+    /* 糖 */
     @Column(precision = 8, scale = 2)
     private BigDecimal sugar = BigDecimal.ZERO;
 
+    /* 钠 */
     @Column(precision = 8, scale = 2)
     private BigDecimal sodium = BigDecimal.ZERO;
 

@@ -57,18 +57,22 @@ public class VoiceRecordService {
      */
     public VoiceParseResultVO parseVoice(Long userId, byte[] audioBytes, String contentType,
                                           Integer durationSeconds) throws IOException {
+        /* 语音文件保存 */
         // ① 保存音频到磁盘
         String audioUrl = saveAudioToDisk(audioBytes, userId);
 
+        /* 语音转文字 */
         // ② 语音→文字
         String transcribed = speechToTextAdapter.transcribe(audioBytes, contentType);
         log.info("语音转写完成: {}", transcribed);
 
+        /* 食物实体解析 */
         // ③ 文字→食物实体
         List<FoodEntityParserAdapter.FoodEntity> entities;
         try {
             entities = foodEntityParserAdapter.extractFoodEntities(transcribed);
             log.info("食物实体提取完成: {} 个", entities.size());
+        /* 异常保护 */
         } catch (Exception e) {
             log.error("食物实体提取失败，保存语音记录但无实体: {}", e.getMessage());
             entities = List.of();
@@ -112,21 +116,25 @@ public class VoiceRecordService {
         return result;
     }
 
+    /* 查询语音记录 */
     /** 查询某日所有语音记录 */
     public List<VoiceRecordVO> listByDate(Long userId, LocalDate date) {
         return voiceRecordRepository.findByUserIdAndRecordDateOrderByCreatedAtDesc(userId, date)
                 .stream().map(this::toVO).toList();
     }
 
+    /* 回填餐次类型 */
     /** 更新语音记录的餐次类型（用户确认保存后回填），同时将音频文件从临时目录移到最终位置 */
     public void updateMealType(Long id, String mealType, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
+        /* 所有权校验 */
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权修改此语音记录");
         }
         record.setMealType(mealType);
 
+        /* 语音文件移动 */
         // 从临时目录移动到最终位置
         String oldPath = record.getAudioUrl();
         if (oldPath != null && oldPath.contains("/temp/")) {
@@ -139,10 +147,12 @@ public class VoiceRecordService {
         log.info("语音记录餐次已更新: id={}, mealType={}, audioUrl={}", id, mealType, record.getAudioUrl());
     }
 
+    /* 删除语音记录及文件 */
     /** 删除语音记录 + 磁盘文件 */
     public void delete(Long id, Long userId) {
         VoiceRecord record = voiceRecordRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("语音记录不存在"));
+        /* 所有权校验 */
         if (!record.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权删除此语音记录");
         }
@@ -195,6 +205,7 @@ public class VoiceRecordService {
      */
     private String saveAudioToDisk(byte[] audioBytes, Long userId) throws IOException {
         Files.createDirectories(TEMP_DIR);
+        /* 音频文件命名 */
         String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String filename = uuid + ".webm";
         Path filePath = TEMP_DIR.resolve(filename);

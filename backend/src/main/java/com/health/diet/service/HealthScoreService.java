@@ -34,9 +34,11 @@ public class HealthScoreService {
         this.alertRuleRepository = alertRuleRepository;
     }
 
+    /* 计算健康评分 */
     public HealthScoreVO getDailyScore(Long userId, LocalDate date) {
         List<DietRecord> records = dietRecordRepository.findByUserAndDate(userId, date);
 
+        /* 最少2餐前置条件 */
         // Check meal count - at least 2 meals required
         Set<String> mealTypes = new HashSet<>();
         for (DietRecord r : records) {
@@ -71,10 +73,14 @@ public class HealthScoreService {
             UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
             Map<String, BigDecimal> thresholds = getUserThresholds(userId, profile);
 
+            /* 评分规则 */
             // Calculate score (0-100) using user's alert_rule thresholds
             BigDecimal score = calculateScore(calorie, protein, fat, carb, sugar, sodium, thresholds);
             vo.setScore(score.setScale(1, RoundingMode.HALF_UP));
 
+            /* 生成优点列表 */
+            /* 生成风险项 */
+            /* 生成改进建议 */
             // Generate strengths, risks, suggestions — all based on user thresholds
             List<String> strengths = new ArrayList<>();
             List<String> risks = new ArrayList<>();
@@ -143,6 +149,7 @@ public class HealthScoreService {
             });
         }
 
+        /* 评分历史趋势 */
         // Get history
         LocalDate weekAgo = date.minusDays(6);
         List<NutritionRecord> historyRecords = nutritionRecordRepository

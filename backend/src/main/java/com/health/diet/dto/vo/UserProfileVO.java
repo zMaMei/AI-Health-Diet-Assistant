@@ -2,20 +2,34 @@ package com.health.diet.dto.vo;
 
 import java.math.BigDecimal;
 
+/* 用户档案返回 */
 public class UserProfileVO {
 
+    /* 档案ID */
     private Long id;
+    /* 用户ID */
     private Long userId;
+    /* 用户名 */
     private String username;
+    /* 头像URL */
     private String avatarUrl;
+    /* 昵称 */
     private String nickname;
+    /* 年龄 */
     private Integer age;
+    /* 身高(cm) */
     private BigDecimal heightCm;
+    /* 体重(kg) */
     private BigDecimal weightKg;
+    /* 健康目标 */
     private String goal;
+    /* 饮食禁忌 */
     private String taboo;
+    /* 口味偏好 */
     private String tastePreference;
+    /* 预警配置 */
     private String warningProfile;
+    /* 性别 */
     private String gender;
 
     public Long getId() { return id; }

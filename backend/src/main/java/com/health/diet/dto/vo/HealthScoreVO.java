@@ -3,12 +3,18 @@ package com.health.diet.dto.vo;
 import java.math.BigDecimal;
 import java.util.List;
 
+/* 健康评分返回 */
 public class HealthScoreVO {
 
+    /* 评分 */
     private BigDecimal score;
+    /* 优势项 */
     private List<String> strengths;
+    /* 风险项 */
     private List<String> risks;
+    /* 建议 */
     private List<String> suggestions;
+    /* 历史评分 */
     private List<ScoreHistoryPoint> history;
 
     public BigDecimal getScore() { return score; }
@@ -23,7 +29,9 @@ public class HealthScoreVO {
     public void setHistory(List<ScoreHistoryPoint> history) { this.history = history; }
 
     public static class ScoreHistoryPoint {
+        /* 日期 */
         private String date;
+        /* 评分 */
         private BigDecimal score;
 
         public ScoreHistoryPoint() {}

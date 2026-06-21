@@ -19,11 +19,15 @@ public class NutritionController {
         this.nutritionService = nutritionService;
     }
 
+    /* 查询每日营养汇总 */
     @GetMapping("/daily")
     public ApiResponse<NutritionDailyVO> getDaily(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 日期参数 */
+        /* 调用查询每日营养汇总服务 */
         return ApiResponse.success(nutritionService.getDaily(userId, date));
     }
 }

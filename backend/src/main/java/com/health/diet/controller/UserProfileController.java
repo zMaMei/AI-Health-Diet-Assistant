@@ -17,16 +17,22 @@ public class UserProfileController {
         this.userProfileService = userProfileService;
     }
 
+    /* 查询用户档案 */
     @GetMapping
     public ApiResponse<UserProfileVO> getProfile(HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 调用查询用户档案服务 */
         return ApiResponse.success(userProfileService.getProfile(userId));
     }
 
+    /* 更新用户档案 */
     @PutMapping
     public ApiResponse<Void> updateProfile(@RequestBody UserProfileUpdateCommand command,
                                             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 调用更新用户档案服务 */
         userProfileService.updateProfile(userId, command);
         return ApiResponse.success();
     }

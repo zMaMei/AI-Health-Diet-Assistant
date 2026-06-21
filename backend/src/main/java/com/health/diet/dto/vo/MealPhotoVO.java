@@ -3,13 +3,20 @@ package com.health.diet.dto.vo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/* 餐次照片返回 */
 public class MealPhotoVO {
 
+    /* 照片ID */
     private Long id;
+    /* 用户ID */
     private Long userId;
+    /* 记录日期 */
     private LocalDate recordDate;
+    /* 餐次类型 */
     private String mealType;
+    /* 图片URL */
     private String imageUrl;
+    /* 创建时间 */
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }

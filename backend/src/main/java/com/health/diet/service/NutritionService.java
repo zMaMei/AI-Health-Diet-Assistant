@@ -38,9 +38,11 @@ public class NutritionService {
         this.alertRuleRepository = alertRuleRepository;
     }
 
+    /* 聚合当日营养 */
     public NutritionDailyVO getDaily(Long userId, LocalDate date) {
         NutritionDailyVO vo = new NutritionDailyVO();
 
+        /* 计算营养汇总 */
         // 直接从 diet_record 表 SUM 当日营养快照
         BigDecimal[] sums = dietRecordRepository.sumNutrition(userId, date);
         BigDecimal calorie = sums[0], protein = sums[1], fat = sums[2],
@@ -53,6 +55,7 @@ public class NutritionService {
         vo.setSugarTotal(sugar.setScale(2, RoundingMode.HALF_UP));
         vo.setSodiumTotal(sodium.setScale(2, RoundingMode.HALF_UP));
 
+        /* 获取目标阈值 */
         // Get goals: alert_rule 阈值优先 → profile.goal 默认值 → 系统默认值
         Map<String, BigDecimal> thresholds = getUserThresholds(userId);
 
@@ -61,6 +64,7 @@ public class NutritionService {
         vo.setFatGoal(thresholds.getOrDefault("fat", DEFAULT_FAT_GOAL));
         vo.setCarbohydrateGoal(thresholds.getOrDefault("carb", DEFAULT_CARB_GOAL));
 
+        /* 生成周趋势 */
         // Get weekly trend
         LocalDate weekAgo = date.minusDays(6);
         List<NutritionRecord> weekRecords = nutritionRecordRepository
@@ -79,9 +83,11 @@ public class NutritionService {
         }
         vo.setTrend(trend);
 
+        /* 生成饮食建议 */
         // Generate suggestion
         vo.setSuggestion(generateSuggestion(vo));
 
+        /* 保存营养记录 */
         // Save nutrition record
         saveNutritionRecord(userId, date, vo);
 

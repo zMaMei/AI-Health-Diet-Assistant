@@ -3,11 +3,16 @@ package com.health.diet.dto.vo;
 import java.math.BigDecimal;
 import java.util.List;
 
+/* 语音解析结果返回 */
 public class VoiceParseResultVO {
 
+    /* 语音记录ID */
     private Long voiceRecordId;
+    /* 音频URL */
     private String audioUrl;
+    /* 转写文本 */
     private String transcribedText;
+    /* 食物实体列表 */
     private List<FoodEntity> foodEntities;
 
     public Long getVoiceRecordId() { return voiceRecordId; }
@@ -20,15 +25,25 @@ public class VoiceParseResultVO {
     public void setFoodEntities(List<FoodEntity> foodEntities) { this.foodEntities = foodEntities; }
 
     public static class FoodEntity {
+        /* 食物名称 */
         private String foodName;
+        /* 分量 */
         private double amount;
+        /* 单位 */
         private String unit;
+        /* 餐次类型 */
         private String mealType;
+        /* 热量 */
         private BigDecimal calorie;
+        /* 蛋白质 */
         private BigDecimal protein;
+        /* 脂肪 */
         private BigDecimal fat;
+        /* 碳水化合物 */
         private BigDecimal carbohydrate;
+        /* 糖分 */
         private BigDecimal sugar;
+        /* 钠 */
         private BigDecimal sodium;
 
         public FoodEntity() {}

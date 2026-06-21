@@ -56,6 +56,7 @@ public class AiAnalysisService {
     public AiChatVO chat(Long userId, AiChatCommand command) {
         LocalDate date = command.getDate();
 
+        /* 保存对话历史 */
         // 1. 查找或创建对话
         AiConversation conv = conversationRepo.findByUserIdAndRecordDate(userId, date)
                 .orElseGet(() -> {
@@ -72,12 +73,15 @@ public class AiAnalysisService {
         userMsg.setContent(command.getMessage());
         messageRepo.save(userMsg);
 
+        /* 收集用户上下文数据 */
         // 3. 收集上下文数据
         String contextData = buildContextData(userId, date);
 
         // 4. 获取历史消息
         List<AiMessage> history = messageRepo.findByConversationIdOrderByCreatedAtAsc(conv.getId());
 
+        /* 构建AI分析提示词 */
+        /* 调用AI分析 */
         // 5. 构建 prompt 并调用 AI
         String aiReply = callAi(contextData, history);
 
@@ -93,6 +97,7 @@ public class AiAnalysisService {
         return buildVO(conv.getId(), allMessages);
     }
 
+    /* 查询对话历史 */
     public AiChatVO getConversation(Long userId, LocalDate date) {
         Optional<AiConversation> convOpt = conversationRepo.findByUserIdAndRecordDate(userId, date);
         if (convOpt.isEmpty()) {

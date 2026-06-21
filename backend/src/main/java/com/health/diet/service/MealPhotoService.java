@@ -40,6 +40,7 @@ public class MealPhotoService {
         this.mealPhotoRepository = mealPhotoRepository;
     }
 
+    /* 查询餐次照片 */
     /** 查询某日所有照片 */
     public List<MealPhotoVO> listByDate(Long userId, LocalDate date) {
         return mealPhotoRepository.findByUserIdAndRecordDateOrderByCreatedAtAsc(userId, date)
@@ -78,6 +79,7 @@ public class MealPhotoService {
         return photo.getId();
     }
 
+    /* 删除照片及文件 */
     /** 删除照片记录并删除磁盘文件 */
     public void delete(Long id, Long userId) {
         MealPhoto photo = mealPhotoRepository.findById(id)
@@ -85,6 +87,7 @@ public class MealPhotoService {
                     log.warn("照片记录不存在: id={}", id);
                     return new IllegalArgumentException("照片记录不存在");
                 });
+        /* 所有权校验 */
         if (!photo.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权删除此照片");
         }
@@ -101,6 +104,7 @@ public class MealPhotoService {
         log.info("照片记录已删除: id={}", id);
     }
 
+    /* 保存照片到临时目录 */
     /**
      * 将上传的图片保存到临时目录，返回临时相对路径。
      * 后续 create() 时再按记录日期+餐次移动到最终位置。
@@ -117,6 +121,7 @@ public class MealPhotoService {
         return relativePath;
     }
 
+    /* 照片移动到最终目录 */
     /**
      * 将临时文件移动到最终位置。
      * 最终路径: {userId}/{yyyy}/{MM}/{dd}/{yyyy-MM-dd}-{userId}-{mealTypeEn}.jpg
@@ -130,6 +135,7 @@ public class MealPhotoService {
             }
 
             String mealEn = MEAL_TYPE_EN.getOrDefault(mealType, "other");
+            /* 文件路径组织 userId/YYYY/MM/DD/ */
             String datePath = String.format("%d/%04d/%02d/%02d",
                     userId, recordDate.getYear(), recordDate.getMonthValue(), recordDate.getDayOfMonth());
             Path finalDir = UPLOAD_ROOT.resolve(datePath);

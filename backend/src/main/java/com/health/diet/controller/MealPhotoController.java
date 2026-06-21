@@ -26,24 +26,28 @@ public class MealPhotoController {
         this.mealPhotoService = mealPhotoService;
     }
 
-    /** 新增照片记录（imageUrl 由 /api/food/recognize 返回后前端传入） */
+    /* 新增餐次照片 */
     @PostMapping
     public ApiResponse<Long> create(@Valid @RequestBody MealPhotoCreateCommand command,
                                      HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         command.setUserId((Long) request.getAttribute("userId"));
         log.info("POST /api/meal-photos — 新增照片记录: userId={}, date={}, mealType={}",
                 command.getUserId(), command.getRecordDate(), command.getMealType());
+        /* 调用新增餐次照片服务 */
         Long id = mealPhotoService.create(command);
         return ApiResponse.success(id);
     }
 
-    /** 查询某日所有照片 */
+    /* 查询餐次照片 */
     @GetMapping
     public ApiResponse<List<MealPhotoVO>> list(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String mealType,
             HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
+        /* 日期参数 */
         List<MealPhotoVO> result;
         if (mealType != null && !mealType.isBlank()) {
             result = mealPhotoService.listByMeal(userId, date, mealType);
@@ -55,12 +59,14 @@ public class MealPhotoController {
         return ApiResponse.success(result);
     }
 
-    /** 删除照片（记录 + 磁盘文件） */
+    /* 删除餐次照片 */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id,
                                      HttpServletRequest request) {
+        /* 从拦截器注入的用户ID */
         Long userId = (Long) request.getAttribute("userId");
         log.info("DELETE /api/meal-photos/{} — 删除照片", id);
+        /* 权限校验  -- 调用删除餐次照片服务 */
         mealPhotoService.delete(id, userId);
         return ApiResponse.success();
     }
