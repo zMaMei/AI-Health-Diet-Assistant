@@ -1,6 +1,7 @@
+<!-- 营养分析页 -->
 <template>
   <div class="nutrition-page">
-    <!-- ===== 区域①: 日期选择器 ===== -->
+    <!-- 区域①: 日期选择器 -->
     <div class="date-selector">
       <button @click="changeDate(-1)" class="btn btn-sm btn-outline">◀</button>
       <input type="date" v-model="currentDate" :max="todayStr"
@@ -12,7 +13,7 @@
     <div v-if="loading" class="loading">加载中...</div>
 
     <template v-else>
-      <!-- ===== 区域②: 当日饮食记录（可编辑） ===== -->
+      <!-- 区域②: 当日饮食记录（可编辑） -->
       <h2 class="page-section-title">🍽️ 当日饮食</h2>
 
       <template v-for="meal in mealTypes" :key="meal.key">
@@ -87,7 +88,7 @@
         <router-link to="/record" class="btn btn-primary" style="display:inline-block;margin-top:8px">去记录</router-link>
       </div>
 
-      <!-- AI 分析入口 -->
+      <!-- AI分析入口卡片 -->
       <div class="card ai-entry-card" @click="openAiModal">
         <div class="ai-entry-content">
           <span class="ai-entry-icon">🤖</span>
@@ -100,7 +101,7 @@
         <span class="ai-entry-arrow">›</span>
       </div>
 
-      <!-- ===== 区域③: 健康评分 ===== -->
+      <!-- 区域③: 健康评分 -->
       <h2 class="page-section-title">⭐ 健康评分</h2>
 
       <template v-if="scoreData">
@@ -141,7 +142,7 @@
       </template>
       <div v-else-if="scoreLoading" class="loading">评分计算中...</div>
 
-      <!-- ===== 区域④: 营养分析 ===== -->
+      <!-- 区域④: 营养分析 -->
       <h2 class="page-section-title">📊 营养分析</h2>
 
       <template v-if="nutrition">
@@ -210,7 +211,7 @@
       </div>
     </div>
 
-    <!-- AI Chat Modal -->
+    <!-- AI对话弹窗 -->
     <div class="modal-overlay ai-modal-overlay" v-if="showAiModal" @click.self="showAiModal=false">
       <div class="modal-content ai-modal-content">
         <div class="ai-modal-header">
@@ -247,7 +248,7 @@
       </div>
     </div>
 
-    <!-- Nutrient source detail modal -->
+    <!-- 营养素来源详情弹窗 -->
     <div class="modal-overlay" v-if="showSourceModal" @click.self="showSourceModal=false">
       <div class="modal-content">
         <h3>{{ sourceDetailTitle }}</h3>
@@ -268,17 +269,18 @@
 </template>
 
 <script setup>
+/* 营养分析页 - 脚本逻辑 */
 import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import api from '../api/index.js'
 import toast from '../toast.js'
 
-const todayStr = new Date().toISOString().split('T')[0]
-const currentDate = ref(todayStr)
-const nutrition = ref(null)
-const scoreData = ref(null)
-const loading = ref(false)
-const scoreLoading = ref(false)
-const circumference = 2 * Math.PI * 54
+/* 今日日期 */ const todayStr = new Date().toISOString().split('T')[0]
+/* 选中日期 */ const currentDate = ref(todayStr)
+/* 每日营养数据 */ const nutrition = ref(null)
+/* 健康评分数据 */ const scoreData = ref(null)
+/* 页面加载状态 */ const loading = ref(false)
+/* 评分加载状态 */ const scoreLoading = ref(false)
+/* 评分圆环周长 */ const circumference = 2 * Math.PI * 54
 
 // Diet records state
 const records = ref([])
@@ -388,13 +390,12 @@ const sourceDetailItems = ref([])
 
 // Computed
 const isToday = computed(() => currentDate.value === todayStr)
-const dashOffset = computed(() => {
+/* 健康评分圆环进度 */ const dashOffset = computed(() => {
   if (!scoreData.value?.score) return circumference
   return circumference - (scoreData.value.score / 100) * circumference
 })
 
-// Nutrient config
-const nutrientKeyMap = {
+/* 营养素配置 */
   calorie: { label: '热量', unit: 'kcal' },
   protein: { label: '蛋白质', unit: 'g' },
   fat: { label: '脂肪', unit: 'g' },
@@ -414,8 +415,7 @@ function formatLocalDate(d) {
   return `${y}-${m}-${day}`
 }
 
-// Date handling
-function changeDate(delta) {
+/* 日期处理：切换日期 */
   const parts = currentDate.value.split('-')
   const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
   d.setDate(d.getDate() + delta)
@@ -435,8 +435,7 @@ function onDateChange() {
   fetchAll()
 }
 
-// Data fetching
-async function fetchAll() {
+/* 数据加载：并行获取饮食/营养/评分/照片/语音/AI对话 */
   loading.value = true
   scoreLoading.value = true
   try {
@@ -516,7 +515,7 @@ async function deleteRecord(id) {
 }
 
 // AI chat actions
-async function startAiAnalysis() {
+/* 开始AI分析 */
   aiLoading.value = true
   try {
     const res = await api.sendAiMessage(currentDate.value, '请帮我分析今天的饮食情况，包括营养摄入是否均衡、哪些方面做得好、哪些需要改进。')
@@ -533,7 +532,7 @@ async function startAiAnalysis() {
   }
 }
 
-async function sendAiMessage() {
+/* 发送AI对话消息 */
   const msg = aiInput.value.trim()
   if (!msg || aiLoading.value) return
   aiInput.value = ''
@@ -565,7 +564,7 @@ function scrollChatBottom() {
   })
 }
 
-function renderMarkdown(text) {
+/* Markdown简单渲染 */
   if (!text) return ''
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -610,7 +609,7 @@ function formatDateShort(dateStr) {
   const days = ['日','一','二','三','四','五','六']
   return '周' + days[d.getDay()]
 }
-async function showSourceDetail(nutrient) {
+/* 营养素来源详情（点击查看各食物贡献） */
   const info = nutrientKeyMap[nutrient.key]
   sourceDetailTitle.value = `🔍 ${info.label}食物来源`
   sourceDetailUnit.value = info.unit

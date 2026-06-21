@@ -1,6 +1,7 @@
+<!-- 食谱推荐页 -->
 <template>
   <div class="recommend-page">
-    <!-- Header -->
+    <!-- 页头 -->
     <div class="page-header">
       <h2 class="page-title">今日推荐</h2>
       <button
@@ -9,7 +10,7 @@
         @click="refreshAll"
       >
         <span v-if="refreshing" class="spinner"></span>
-        {{ refreshing ? '生成中...' : '🔄 换一批' }}
+        <!-- 强制刷新推荐 --> {{ refreshing ? '生成中...' : '🔄 换一批' }}
       </button>
     </div>
 
@@ -45,7 +46,7 @@
           </div>
         </div>
 
-        <!-- Nutrition bars -->
+        <!-- 营养进度条 -->
         <div class="rec-nutrition">
           <div class="nut-row" v-for="nut in nutBars(rec)" :key="nut.label">
             <span class="nut-label">{{ nut.icon }} {{ nut.label }}</span>
@@ -78,7 +79,7 @@
       </div>
     </template>
 
-    <!-- Recipe Detail Modal -->
+    <!-- 食谱详情弹窗 -->
     <div class="modal-overlay" v-if="showDetailModal" @click.self="showDetailModal=false">
       <div class="modal-content recipe-detail">
         <h3>🍳 {{ detailRecipe?.recipeName }}</h3>
@@ -132,24 +133,25 @@
 </template>
 
 <script setup>
+/* 食谱推荐页 - 脚本逻辑 */
 import { ref, onMounted } from 'vue'
 import api from '../api/index.js'
 import toast from '../toast.js'
 
-const recommendations = ref([])
-const userThresholds = ref({})
-const loading = ref(false)
-const refreshing = ref(false)
-const errorMsg = ref('')
-const showDetailModal = ref(false)
-const detailRecipe = ref(null)
+/* 推荐列表 */ const recommendations = ref([])
+/* 用户营养阈值 */ const userThresholds = ref({})
+/* 加载状态 */ const loading = ref(false)
+/* 刷新状态 */ const refreshing = ref(false)
+/* 错误消息 */ const errorMsg = ref('')
+/* 详情弹窗 */ const showDetailModal = ref(false)
+/* 详情菜谱 */ const detailRecipe = ref(null)
 
-// Default thresholds fallback (used when backend hasn't provided thresholds yet)
+/* 默认营养阈值（兜底） */
 const defaultThresholds = {
   calorie: 2000, protein: 60, fat: 65, carbohydrate: 300, sugar: 50, sodium: 2400
 }
 
-async function fetchRecommendations() {
+/* 获取今日推荐 */
   loading.value = true
   errorMsg.value = ''
   try {
@@ -176,7 +178,7 @@ async function fetchRecommendations() {
   }
 }
 
-async function refreshAll() {
+/* 强制刷新推荐 */
   refreshing.value = true
   try {
     const res = await api.refreshRecommendations()
@@ -203,7 +205,7 @@ async function refreshAll() {
   }
 }
 
-function nutBars(rec) {
+/* 营养进度条计算 */
   const nutrients = [
     { key: 'calorie', label: '热量', icon: '🔥', unit: 'kcal', color: '#FF9800' },
     { key: 'protein', label: '蛋白质', icon: '🥩', unit: 'g', color: '#4CAF50' },

@@ -1,16 +1,20 @@
+<!-- 根组件 -->
 <template>
   <div id="app-container">
+    <!-- 顶部标题栏 -->
     <header class="app-header">
       <h1>{{ currentTitle }}</h1>
     </header>
+    <!-- 主内容区（路由视图） -->
     <main class="app-main">
       <router-view />
     </main>
-    <!-- 全局 toast -->
+    <!-- 全局Toast消息 -->
     <transition name="fade">
       <div v-if="toast.visible.value" class="global-toast">{{ toast.message.value }}</div>
     </transition>
 
+    <!-- 底部导航栏 -->
     <nav class="app-nav">
       <router-link to="/record" class="nav-item" active-class="active">
         <span class="nav-icon">📝</span>
@@ -38,6 +42,7 @@ import { useRoute } from 'vue-router'
 import toast from './toast.js'
 
 const route = useRoute()
+/* 根据路由meta动态切换标题 */
 const currentTitle = computed(() => route.meta.title || 'AI健康饮食助手')
 </script>
 

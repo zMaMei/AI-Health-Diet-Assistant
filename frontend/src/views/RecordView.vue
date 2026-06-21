@@ -1,23 +1,24 @@
+<!-- 饮食记录页 -->
 <template>
   <div class="record-page">
 
-    <!-- Quick add buttons -->
+    <!-- 快速操作按钮 -->
     <div class="quick-actions">
-      <button class="action-btn" @click="openPhotoModal">
+      <!-- 拍照识别食物 --><button class="action-btn" @click="openPhotoModal">
         <span class="action-icon">📷</span>
         <span>拍照识别</span>
       </button>
-      <button class="action-btn" @click="openVoiceModal">
+      <!-- 语音输入 --><button class="action-btn" @click="openVoiceModal">
         <span class="action-icon">🎤</span>
         <span>语音输入</span>
       </button>
-      <button class="action-btn" @click="openManualModal">
+      <!-- 手动添加 --><button class="action-btn" @click="openManualModal">
         <span class="action-icon">✏️</span>
         <span>手动添加</span>
       </button>
     </div>
 
-    <!-- Alert warnings -->
+    <!-- 饮食预警 -->
     <div class="card alert-card" v-if="alerts.length" style="border-left:3px solid #f44336">
       <h3 class="card-title" style="color:#f44336">🔔 饮食预警</h3>
       <div v-for="(alert, i) in alerts" :key="i" style="margin:4px 0">
@@ -26,7 +27,7 @@
       </div>
     </div>
 
-    <!-- Today's nutrition summary -->
+    <!-- 今日摄入总览 -->
     <div class="card summary-card" v-if="todayNutrition">
       <h3 class="card-title">📊 今日摄入总览</h3>
       <div class="summary-grid">
@@ -57,7 +58,7 @@
       </div>
     </div>
 
-    <!-- Meal accordion list -->
+    <!-- 餐次手风琴列表 -->
     <template v-for="meal in mealTypes" :key="meal.key">
       <div class="meal-card card" v-if="groupedRecords[meal.key]?.length" :class="{ expanded: expandedMeals[meal.key] }">
         <!-- Collapsed header: click to toggle -->
@@ -76,7 +77,7 @@
 
         <!-- Expanded body -->
         <div class="meal-body" v-show="expandedMeals[meal.key]">
-          <!-- Photo carousel -->
+          <!-- 照片轮播 -->
           <div class="photo-carousel" v-if="mealPhotos[meal.key]?.length">
             <div class="photo-track" ref="photoTrack">
               <div class="photo-thumb" v-for="(photo, pi) in mealPhotos[meal.key]" :key="pi"
@@ -88,7 +89,7 @@
 
           <div class="meal-divider"></div>
 
-          <!-- Voice records for this meal -->
+          <!-- 语音记录展示 -->
           <div class="voice-records-mini" v-if="voiceRecordsByMeal[meal.key]?.length">
             <div class="voice-mini-card" v-for="vr in voiceRecordsByMeal[meal.key]" :key="vr.id">
               <div class="voice-mini-header">
@@ -128,7 +129,7 @@
       </div>
     </template>
 
-    <!-- Hidden audio player for voice playback -->
+    <!-- 隐藏音频播放器（语音回放） -->
     <audio ref="voiceAudioRef" style="display:none" @ended="onVoiceEnded" preload="auto"></audio>
 
     <div v-if="!Object.values(groupedRecords).some(g => g.length)" class="empty-state">
@@ -137,12 +138,12 @@
       <p style="font-size:12px;color:#bbb;margin-top:4px">点击上方按钮开始记录</p>
     </div>
 
-    <!-- ==================== Photo Preview Lightbox ==================== -->
+    <!-- ==================== 照片预览灯箱 ==================== -->
     <div class="lightbox-overlay" v-if="previewPhoto" @click="closePhotoPreview">
       <img :src="previewPhoto" alt="食物照片大图" class="lightbox-img" @click.stop>
     </div>
 
-    <!-- ==================== Photo Recognition Modal ==================== -->
+    <!-- ==================== 拍照识别食物弹窗 ==================== -->
     <div class="modal-overlay" v-if="showPhotoModal" @click.self="!photoSaving && closePhotoModal()">
       <div class="modal-content">
         <h3>📷 拍照识别食物</h3>
@@ -228,7 +229,7 @@
       </div>
     </div>
 
-    <!-- ==================== Voice Input Modal ==================== -->
+    <!-- ==================== 语音输入弹窗 ==================== -->
     <div class="modal-overlay" v-if="showVoiceModal" @click.self="!voiceSaving && closeVoiceModal()">
       <div class="modal-content">
         <h3>🎤 语音输入</h3>
@@ -317,7 +318,7 @@
       </div>
     </div>
 
-    <!-- ==================== Manual Add Modal ==================== -->
+    <!-- ==================== 手动添加弹窗 ==================== -->
     <div class="modal-overlay" v-if="showManualModal" @click.self="!manualSaving && closeManualModal()">
       <div class="modal-content">
         <h3>✏️ 手动添加</h3>
@@ -383,7 +384,7 @@
       </div>
     </div>
 
-    <!-- ==================== Edit Record Modal ==================== -->
+    <!-- ==================== 编辑饮食记录弹窗 ==================== -->
     <div class="modal-overlay" v-if="showEditModal" @click.self="showEditModal=false">
       <div class="modal-content">
         <h3>✏️ 编辑饮食记录</h3>
@@ -413,21 +414,22 @@
 </template>
 
 <script setup>
+/* 饮食记录页 - 脚本逻辑 */
 import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
 import toast from '../toast.js'
 
-function showLoginToast() {
+/* 未登录提示 */
   toast.show('请先在"我的"页面登录')
 }
 
-const today = new Date().toISOString().split('T')[0]
-const records = ref([])
-const todayNutrition = ref(null)
-const alerts = ref([])
+/* 今日日期 */ const today = new Date().toISOString().split('T')[0]
+/* 饮食记录列表 */ const records = ref([])
+/* 今日营养总览 */ const todayNutrition = ref(null)
+/* 预警消息列表 */ const alerts = ref([])
 
-// Accordion state: which meals are expanded
+/* 餐次展开/折叠状态 */
 const expandedMeals = reactive({
   '早餐': true,
   '午餐': true,
@@ -451,6 +453,7 @@ function photoFullUrl(relativePath) {
 function openPhotoPreview(url) { previewPhoto.value = photoFullUrl(url) }
 function closePhotoPreview() { previewPhoto.value = null }
 
+/* 餐次类型定义 */
 const mealTypes = [
   { key: '早餐', label: '早餐', icon: '🍳' },
   { key: '午餐', label: '午餐', icon: '🍚' },
@@ -459,9 +462,9 @@ const mealTypes = [
   { key: '其他', label: '其他', icon: '🍽️' },
 ]
 
-const sourceLabels = { photo: '拍照', voice: '语音', manual: '手动' }
+/* 数据来源标签映射 */ const sourceLabels = { photo: '拍照', voice: '语音', manual: '手动' }
 
-const groupedRecords = computed(() => {
+/* 按餐次分组饮食记录 */
   const groups = {}
   mealTypes.forEach(m => { groups[m.key] = [] })
   records.value.forEach(r => {
@@ -471,7 +474,7 @@ const groupedRecords = computed(() => {
   return groups
 })
 
-// Meal-level nutrition totals
+/* 餐次营养汇总计算 */
 const mealTotals = computed(() => {
   const totals = {}
   mealTypes.forEach(m => {
@@ -486,13 +489,10 @@ const mealTotals = computed(() => {
   return totals
 })
 
-// Meal photos loaded from backend API
-const mealPhotos = ref({})
-// Voice records loaded from backend API
-const voiceRecords = ref([])
+/* 餐次照片数据 */ const mealPhotos = ref({})
+/* 语音记录数据 */ const voiceRecords = ref([])
 
-// Group voice records by meal type
-const voiceRecordsByMeal = computed(() => {
+/* 按餐次分组语音记录 */
   const groups = {}
   voiceRecords.value.forEach(v => {
     if (!groups[v.mealType]) groups[v.mealType] = []
@@ -501,7 +501,7 @@ const voiceRecordsByMeal = computed(() => {
   return groups
 })
 
-// ==================== Photo Modal State ====================
+/* ==================== 拍照识别弹窗状态 ==================== */
 const showPhotoModal = ref(false)
 const photoInputRef = ref(null)
 const photoFile = ref(null)
@@ -513,7 +513,7 @@ const photoSaving = ref(false)
 const selectedMeal = ref('午餐')
 const photoAnalyzedResultImageUrl = ref(null)   // 识别返回的 imageUrl
 
-// ==================== Voice Modal State ====================
+/* ==================== 语音输入弹窗状态 ==================== */
 const showVoiceModal = ref(false)
 const voiceRecording = ref(false)
 const voiceElapsed = ref(0)
@@ -534,7 +534,7 @@ let voiceTimer = null
 let voiceStartTime = null
 let voiceCancelOnStop = false
 
-// ==================== Manual Modal State ====================
+/* ==================== 手动添加弹窗状态 ==================== */
 const showManualModal = ref(false)
 const manualForm = ref({ foodName: '', mealType: '午餐', amount: 1 })
 const manualAnalyzing = ref(false)
@@ -542,7 +542,7 @@ const manualAnalysisResult = ref(null)
 const manualError = ref(null)
 const manualSaving = ref(false)
 
-// ==================== Edit Modal State ====================
+/* ==================== 编辑记录弹窗状态 ==================== */
 const showEditModal = ref(false)
 const editForm = ref({ id: null, foodName: '', mealType: '午餐', amount: 1 })
 
@@ -550,8 +550,8 @@ const checkedCount = computed(() =>
   photoCandidates.value.filter(c => c._checked).length
 )
 
-// ==================== Data Fetching ====================
-async function fetchData() {
+/* ==================== 数据加载 ==================== */
+/* 查询饮食记录、营养、照片、语音 */
   try {
     const [recRes, nutRes, photoRes, voiceRes] = await Promise.all([
       api.getDietRecords(today),
@@ -585,6 +585,7 @@ async function fetchData() {
   }
 }
 
+/* 检查预警 */
 async function checkWarnings() {
   try {
     const res = await api.checkAlerts(today)
@@ -599,8 +600,8 @@ async function checkWarnings() {
   }
 }
 
-// ==================== Photo Modal ====================
-function openPhotoModal() {
+/* ==================== 拍照识别逻辑 ==================== */
+/* 打开拍照弹窗 */
   if (!auth.state.isLoggedIn) {
     showLoginToast()
     return
@@ -638,6 +639,7 @@ function onPhotoFileSelected(e) {
   photoError.value = null
 }
 
+/* 开始AI识别分析 */
 async function startPhotoAnalyze() {
   if (!photoFile.value) return
   photoLoading.value = true
@@ -676,6 +678,7 @@ function retryPhoto() {
   if (photoInputRef.value) photoInputRef.value.value = ''
 }
 
+/* 保存拍照识别结果（含餐次照片） */
 async function saveFromPhoto() {
   const checked = photoCandidates.value.filter(c => c._checked)
   if (!checked.length) return
@@ -727,7 +730,8 @@ async function saveFromPhoto() {
   await checkWarnings()
 }
 
-// ==================== Voice Modal ====================
+/* ==================== 语音输入逻辑 ==================== */
+/* 开始录音 */
 function formatVoiceTime(seconds) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -798,6 +802,7 @@ function stopVoiceRecord() {
   }
 }
 
+/* 语音转文字并解析食物 */
 async function voiceAnalyzeBlob() {
   if (!voiceChunks.length) return
   voiceLoading.value = true
@@ -839,7 +844,7 @@ function retryVoice() {
   voiceChunks = []
 }
 
-// ==================== Voice Playback ====================
+/* ==================== 语音播放 ==================== */
 const voiceAudioRef = ref(null)
 const playingVoiceId = ref(null)
 
@@ -891,7 +896,8 @@ function stopVoiceStream() {
   }
 }
 
-async function saveFromVoice() {
+/* ==================== 保存语音识别结果 ==================== */
+/* 保存语音解析食物并回填餐次 */
   const checked = voiceResult.value.foodEntities.filter(e => e._checked)
   if (!checked.length) return
 
@@ -937,8 +943,8 @@ async function saveFromVoice() {
   await checkWarnings()
 }
 
-// ==================== Manual Modal ====================
-function openManualModal() {
+/* ==================== 手动添加逻辑 ==================== */
+/* 打开手动添加弹窗 */
   if (!auth.state.isLoggedIn) {
     showLoginToast()
     return
@@ -961,6 +967,7 @@ function closeManualModal() {
   manualSaving.value = false
 }
 
+/* 文本分析食物 */
 async function startManualAnalyze() {
   const name = manualForm.value.foodName.trim()
   if (!name) return
@@ -1018,8 +1025,8 @@ async function saveManual() {
   }
 }
 
-// ==================== Edit / Delete ====================
-function editRecord(rec) {
+/* ==================== 编辑/删除 ==================== */
+/* 编辑饮食记录 */
   editForm.value = {
     id: rec.id,
     foodName: rec.foodName,
@@ -1045,6 +1052,7 @@ async function saveEdit() {
   }
 }
 
+/* 删除饮食记录 */
 async function deleteRecord(id) {
   if (confirm('确定删除这条记录？')) {
     await api.deleteDietRecord(id)

@@ -1,3 +1,4 @@
+<!-- 个人中心页 -->
 <template>
   <div class="profile-page">
     <div v-if="loading" class="loading">加载中...</div>
@@ -37,7 +38,7 @@
       </div>
 
       <template v-if="auth.state.isLoggedIn">
-        <!-- Health goal -->
+        <!-- 健康目标 -->
         <div class="card">
           <h3 class="card-title">🎯 健康目标</h3>
           <select v-model="form.goal" class="profile-select">
@@ -48,7 +49,7 @@
           </select>
         </div>
 
-        <!-- Personal info -->
+        <!-- 个人资料 -->
         <div class="card">
           <h3 class="card-title">📋 个人资料</h3>
           <div class="form-row">
@@ -73,7 +74,7 @@
           </div>
         </div>
 
-        <!-- Preferences -->
+        <!-- 口味偏好 -->
         <div class="card">
           <h3 class="card-title">😋 口味偏好</h3>
           <div class="tag-selector">
@@ -109,7 +110,7 @@
           </div>
         </div>
 
-        <!-- Taboo -->
+        <!-- 忌口 -->
         <div class="card">
           <h3 class="card-title">🚫 忌口</h3>
           <div class="tag-selector">
@@ -145,7 +146,7 @@
           </div>
         </div>
 
-        <!-- Warning Profile -->
+        <!-- 慢性病/特殊饮食 -->
         <div class="card">
           <h3 class="card-title">⚠️ 慢性病/特殊饮食</h3>
           <div class="tag-selector">
@@ -181,7 +182,7 @@
           </div>
         </div>
 
-        <!-- Alert rules -->
+        <!-- 预警阈值设置 -->
         <div class="card">
           <h3 class="card-title">🔔 预警阈值设置</h3>
           <div class="alert-rule" v-for="rule in alertRules" :key="rule.id">
@@ -224,7 +225,7 @@
       </div>
     </template>
 
-  <!-- 头像裁剪模态框 -->
+  <!-- 头像裁剪弹窗 -->
   <div v-if="showAvatarModal" class="modal-overlay" @click.self="closeAvatarModal">
     <div class="modal-sheet" style="width: 340px;">
       <div class="modal-header">
@@ -263,7 +264,7 @@
     </div>
   </div>
 
-  <!-- 登录/注册模态框 -->
+  <!-- 登录/注册弹窗 -->
   <div v-if="showAuthModal" class="modal-overlay" @click.self="showAuthModal = false">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -300,25 +301,29 @@
 </template>
 
 <script setup>
+/* 个人中心页 - 脚本逻辑 */
 import { ref, nextTick, onMounted } from 'vue'
 import api from '../api/index.js'
 import auth from '../auth.js'
 import toast from '../toast.js'
+/* Cropper.js — 头像裁剪 */
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 
-const loading = ref(false)
-const profile = ref(null)
-const alertRules = ref([])
-const nicknameInput = ref(null)
+/* 页面加载状态 */ const loading = ref(false)
+/* 用户档案 */ const profile = ref(null)
+/* 预警规则列表 */ const alertRules = ref([])
+/* 昵称输入框引用 */ const nicknameInput = ref(null)
 
-const editingNickname = ref(false)
+/* 昵称编辑状态 */ const editingNickname = ref(false)
 const nicknameDraft = ref('')
 
+/* 预设标签选项 */
 const tasteOptions = ['清淡', '中式', '西式', '日式', '辣味', '酸甜', '咸鲜']
 const tabooOptions = ['海鲜', '花生', '牛奶', '鸡蛋', '豆制品', ' gluten', '辛辣']
 const warningOptions = ['糖尿病', '高血压', '高血脂', '痛风']
 
+/* 营养素标签/单位映射 */
 const nutrientLabels = { calorie: '每日热量上限', sugar: '每日糖分上限', sodium: '每日钠上限', protein: '每日蛋白质目标', fat: '每日脂肪上限', carb: '每日碳水目标' }
 const nutrientUnits = { calorie: 'kcal', sugar: 'g', sodium: 'mg', protein: 'g', fat: 'g', carb: 'g' }
 
@@ -333,20 +338,16 @@ const form = ref({
   gender: '',
 })
 
-const selectedTastes = ref([])
-const selectedTaboos = ref([])
+/* 已选口味 */ const selectedTastes = ref([])
+/* 已选忌口 */ const selectedTaboos = ref([])
 
-// 从 form.warningProfile 字符串派生的 selected 数组
-const selectedWarnings = ref([])
-
-// 更新 selectedWarnings（在 fetchData 中同步）
-function syncWarningFromForm() {
+/* 从form.warningProfile字符串派生的selected数组 */
   selectedWarnings.value = form.value.warningProfile
     ? form.value.warningProfile.split(',').map(s => s.trim()).filter(Boolean)
     : []
 }
 
-// ==================== 认证相关 ====================
+/* ==================== 认证相关 ==================== */
 const showAuthModal = ref(false)
 const authTab = ref('login')
 const authLoading = ref(false)
@@ -354,7 +355,7 @@ const authError = ref('')
 const loginForm = ref({ username: '', password: '' })
 const registerForm = ref({ username: '', password: '', confirmPassword: '' })
 
-// ==================== 头像裁剪 ====================
+/* ==================== 头像裁剪 ==================== */
 const showAvatarModal = ref(false)
 const avatarCropSrc = ref('')
 const cropImage = ref(null)
@@ -362,7 +363,7 @@ const cropFileInput = ref(null)
 const cropperReady = ref(false)
 let cropperInstance = null
 
-function openCropModal() {
+/* 打开头像裁剪弹窗 */
   avatarCropSrc.value = auth.state.avatarUrl || ''
   showAvatarModal.value = true
   nextTick(() => {
@@ -451,7 +452,7 @@ function closeAvatarModal() {
   }
 }
 
-async function handleLogin() {
+/* 用户登录 */
   authError.value = ''
   if (!loginForm.value.username.trim() || !loginForm.value.password.trim()) {
     authError.value = '请填写用户名和密码'
@@ -472,7 +473,7 @@ async function handleLogin() {
   }
 }
 
-async function handleRegister() {
+/* 用户注册 */
   authError.value = ''
   const { username, password, confirmPassword } = registerForm.value
   if (!username.trim() || !password.trim()) {
@@ -506,14 +507,14 @@ async function handleRegister() {
   }
 }
 
-async function handleLogout() {
+/* 用户登出 */
   if (!confirm('确定要退出登录吗？')) return
   await auth.logout()
   profile.value = null
 }
 
 
-async function fetchData() {
+/* 查询用户档案和预警规则 */
   if (!auth.state.isLoggedIn) return
   loading.value = true
   try {
@@ -582,12 +583,12 @@ function toggleWarning(w) {
   form.value.warningProfile = selectedWarnings.value.join(',')
 }
 
-// ==================== 判断自定义标签 ====================
+/* ==================== 自定义标签判断 ==================== */
 function isCustomTaste(tag) { return !tasteOptions.includes(tag) }
 function isCustomTaboo(tag) { return !tabooOptions.includes(tag) }
 function isCustomWarning(tag) { return !warningOptions.includes(tag) }
 
-// ==================== 添加自定义标签状态 ====================
+/* ==================== 自定义标签添加/编辑 ==================== */
 const addingTaste = ref(false)
 const addingTaboo = ref(false)
 const addingWarning = ref(false)
@@ -595,7 +596,7 @@ const tasteDraft = ref('')
 const tabooDraft = ref('')
 const warningDraft = ref('')
 
-// ==================== 编辑自定义标签状态 ====================
+/* 编辑标签状态 */
 const editingTag = ref({ group: '', oldName: '', draft: '' })
 const analyzingThreshold = ref(false)
 
@@ -640,7 +641,7 @@ function confirmAddWarning() {
   warningDraft.value = ''
 }
 
-// ==================== 编辑自定义标签 ====================
+/* ==================== 编辑自定义标签 ==================== */
 function startEditTaste(oldName) {
   editingTag.value = { group: 'taste', oldName, draft: oldName }
 }
@@ -677,7 +678,7 @@ function cancelEditTag() {
   editingTag.value = { group: '', oldName: '', draft: '' }
 }
 
-// ==================== 删除自定义标签 ====================
+/* ==================== 删除自定义标签 ==================== */
 async function deleteTaste(tag) {
   if (!confirm(`确定删除"${tag}"吗？`)) return
   const i = selectedTastes.value.indexOf(tag)
@@ -700,7 +701,7 @@ async function deleteWarning(tag) {
   await saveProfile()
 }
 
-async function analyzeThreshold() {
+/* AI智能分析生成个性化阈值 */
   analyzingThreshold.value = true
   try {
     await api.updateProfile({
@@ -723,7 +724,7 @@ async function analyzeThreshold() {
   }
 }
 
-async function saveProfile() {
+/* 更新用户档案 */
   try {
     await api.updateProfile({
       goal: form.value.goal,
@@ -740,11 +741,11 @@ async function saveProfile() {
   }
 }
 
-async function toggleRule(rule) {
+/* 切换预警规则开关 */
   await api.updateAlertRule(rule.id, { enabled: rule.enabled })
 }
 
-async function updateRule(rule) {
+/* 修改预警规则阈值 */
   await api.updateAlertRule(rule.id, { threshold: rule.threshold })
 }
 

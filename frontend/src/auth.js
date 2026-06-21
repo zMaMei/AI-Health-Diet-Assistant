@@ -1,12 +1,16 @@
+/* 认证状态管理 */
 import { reactive } from 'vue'
 import axios from 'axios'
 
+/* localStorage存储键名 */
 const STORAGE_KEY = 'diet_auth'
 
+/* 认证请求头 */
 function authHeaders() {
   return { Authorization: `Bearer ${state.token}` }
 }
 
+/* 统一响应解包 */
 function unwrapApiResponse(res) {
   const body = res.data
   if (body && typeof body === 'object' && 'code' in body) {
@@ -20,6 +24,7 @@ function unwrapApiResponse(res) {
   return body
 }
 
+/* 认证全局状态（响应式） */
 const state = reactive({
   isLoggedIn: false,
   userId: null,
@@ -29,6 +34,7 @@ const state = reactive({
   token: '',
 })
 
+/* 登录态持久化到localStorage */
 function saveToStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     userId: state.userId,
@@ -39,10 +45,12 @@ function saveToStorage() {
   }))
 }
 
+/* 清除localStorage中的登录态 */
 function clearStorage() {
   localStorage.removeItem(STORAGE_KEY)
 }
 
+/* 清除本地登录状态 */
 function clearLocalState() {
   state.isLoggedIn = false
   state.userId = null
@@ -53,6 +61,7 @@ function clearLocalState() {
   clearStorage()
 }
 
+/* 从localStorage恢复登录态 */
 function init() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
@@ -69,6 +78,7 @@ function init() {
   }
 }
 
+/* 用户登录 */
 async function login(username, password) {
   const res = await axios.post('/api/auth/login', { username, password })
   const data = unwrapApiResponse(res)
@@ -82,6 +92,7 @@ async function login(username, password) {
   return data
 }
 
+/* 用户注册 */
 async function register(username, password) {
   const res = await axios.post('/api/auth/register', { username, password })
   const data = unwrapApiResponse(res)
@@ -95,15 +106,17 @@ async function register(username, password) {
   return data
 }
 
+/* 用户登出 */
 async function logout() {
   try {
     await axios.post('/api/auth/logout', {}, { headers: authHeaders() })
   } catch (e) {
-    // 即使 API 调用失败也清除本地状态
+    /* 即使API调用失败也清除本地状态 */
   }
   clearLocalState()
 }
 
+/* 头像上传 */
 async function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('file', file)
